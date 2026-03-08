@@ -1,0 +1,37 @@
+# ─── STAC Catalogs ───
+catalogs:
+  default:
+    url: "https://earth-search.aws.element84.com/v1"
+    collections:
+      optical: "sentinel-2-l2a"
+      radar: "sentinel-1-grd"
+      elevation: "cop-dem-glo-30"
+
+  search_catalogs:
+    - name: "Earth Search (AWS)"
+      url: "https://earth-search.aws.element84.com/v1"
+    - name: "Planetary Computer"
+      url: "https://planetarycomputer.microsoft.com/api/stac/v1"
+
+# ─── Topic → Collection Mapping (only collections available on BOTH catalogs) ───
+# Common: cop-dem-glo-30, cop-dem-glo-90, landsat-c2-l2, naip, sentinel-1-grd, sentinel-2-l1c, sentinel-2-l2a
+topics:
+  optical:    ["sentinel-2-l2a", "landsat-c2-l2"]
+  radar:      ["sentinel-1-grd"]
+  sar:        ["sentinel-1-grd"]
+  elevation:  ["cop-dem-glo-30", "cop-dem-glo-90"]
+  dem:        ["cop-dem-glo-30", "cop-dem-glo-90"]
+  flood:      ["sentinel-1-grd", "sentinel-2-l2a"]
+  wildfire:   ["sentinel-2-l2a", "landsat-c2-l2"]
+  fire:       ["sentinel-2-l2a", "landsat-c2-l2"]
+  vegetation: ["sentinel-2-l2a", "landsat-c2-l2"]
+  ndvi:       ["sentinel-2-l2a"]
+  urban:      ["sentinel-2-l2a", "sentinel-1-grd"]
+  water:      ["sentinel-2-l2a", "sentinel-1-grd"]
+  forest:     ["sentinel-2-l2a", "landsat-c2-l2"]
+  agriculture: ["sentinel-2-l2a", "naip"]
+  sentinel:   ["sentinel-2-l2a", "sentinel-1-grd"]
+  landsat:    ["landsat-c2-l2"]
+  multimodal: ["sentinel-2-l2a", "sentinel-1-grd"]
+  fusion:     ["sentinel-2-l2a", "sentinel-1-grd"]
+  aerial:     ["naip"]

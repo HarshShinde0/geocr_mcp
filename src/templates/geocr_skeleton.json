@@ -1,0 +1,546 @@
+{
+  "@context": {
+    "@language": "en",
+    "@vocab": "https://schema.org/",
+    "citeAs": "cr:citeAs",
+    "column": "cr:column",
+    "conformsTo": "dct:conformsTo",
+    "cr": "http://mlcommons.org/croissant/",
+    "geocr": "http://mlcommons.org/croissant/geo/",
+    "rai": "http://mlcommons.org/croissant/RAI/",
+    "dct": "http://purl.org/dc/terms/",
+    "sc": "https://schema.org/",
+    "data": {
+      "@id": "cr:data",
+      "@type": "@json"
+    },
+    "dataBiases": "cr:dataBiases",
+    "dataCollection": "cr:dataCollection",
+    "dataType": {
+      "@id": "cr:dataType",
+      "@type": "@vocab"
+    },
+    "equivalentProperty": "cr:equivalentProperty",
+    "examples": {
+      "@id": "cr:examples",
+      "@type": "@json"
+    },
+    "extract": "cr:extract",
+    "field": "cr:field",
+    "fileObject": "cr:fileObject",
+    "fileProperty": "cr:fileProperty",
+    "fileSet": "cr:fileSet",
+    "format": "cr:format",
+    "includes": "cr:includes",
+    "isLiveDataset": "cr:isLiveDataset",
+    "jsonPath": "cr:jsonPath",
+    "key": "cr:key",
+    "md5": "cr:md5",
+    "parentField": "cr:parentField",
+    "path": "cr:path",
+    "personalSensitiveInformation": "cr:personalSensitiveInformation",
+    "recordSet": "cr:recordSet",
+    "references": "cr:references",
+    "regex": "cr:regex",
+    "repeated": "cr:repeated",
+    "replace": "cr:replace",
+    "samplingRate": "cr:samplingRate",
+    "separator": "cr:separator",
+    "source": "cr:source",
+    "subField": "cr:subField",
+    "transform": "cr:transform"
+  },
+  "@type": "sc:Dataset",
+  "@id": "unique_dataset_identifier",
+  "name": "Dataset Name",
+  "alternateName": [
+    "Alternative Name 1",
+    "Alternative Name 2"
+  ],
+  "description": "Detailed description of the dataset",
+  "url": "https://example.com/dataset",
+  "version": "1.0.0",
+  "license": "CC-BY-4.0",
+  "conformsTo": [
+    "http://mlcommons.org/croissant/1.1",
+    "http://mlcommons.org/croissant/geo/1.0"
+  ],
+  "citeAs": "@dataset{dataset_id, title={Dataset Title}, author={Author Name}, year={2024}, url={https://example.com}}",
+  "datePublished": "2024-01-01",
+  "identifier": "doi:10.xxxx/xxxxx",
+  "creator": {
+    "@type": "Organization",
+    "name": "Organization Name",
+    "url": "https://example.com/organization"
+  },
+  "keywords": [
+    "keyword1",
+    "keyword2",
+    "keyword3",
+    "remote sensing",
+    "geospatial",
+    "satellite imagery"
+  ],
+  "references": [
+    {
+      "@type": "CreativeWork",
+      "url": "https://example.com/reference1",
+      "name": "Reference Name",
+      "encodingFormat": "application/json"
+    }
+  ],
+  "spatialCoverage": {
+    "@type": "Place",
+    "geo": {
+      "@type": "GeoShape",
+      "box": "south north west east",
+      "description": "Optional textual description of spatial coverage"
+    }
+  },
+  "temporalCoverage": "2020-01-01/2024-12-31",
+  "geocr:coordinateReferenceSystem": "EPSG:4326",
+  "geocr:spatialResolution": {
+    "@type": "QuantitativeValue",
+    "value": 30.0,
+    "unitText": "m"
+  },
+  "geocr:temporalResolution": {
+    "@type": "QuantitativeValue",
+    "value": 1,
+    "unitText": "day"
+  },
+  "geocr:samplingStrategy": "Description of how data was sampled or collected",
+  "geocr:bandConfiguration": {
+    "@type": "geocr:BandConfiguration",
+    "geocr:totalBands": 6,
+    "geocr:bandNameList": [
+      "Band1",
+      "Band2",
+      "Band3",
+      "Band4",
+      "Band5",
+      "Band6"
+    ]
+  },
+  "geocr:spectralBandMetadata": [
+    {
+      "@type": "geocr:SpectralBand",
+      "name": "Blue",
+      "description": "Blue band description",
+      "geocr:centerWavelength": {
+        "@type": "QuantitativeValue",
+        "value": 490,
+        "unitText": "nm"
+      },
+      "geocr:bandwidth": {
+        "@type": "QuantitativeValue",
+        "value": 65,
+        "unitText": "nm"
+      },
+      "dataType": "Spectral"
+    },
+    {
+      "@type": "geocr:SpectralBand",
+      "name": "Green",
+      "description": "Green band description",
+      "geocr:centerWavelength": {
+        "@type": "QuantitativeValue",
+        "value": 560,
+        "unitText": "nm"
+      },
+      "geocr:bandwidth": {
+        "@type": "QuantitativeValue",
+        "value": 60,
+        "unitText": "nm"
+      }
+    },
+    {
+      "@type": "geocr:SpectralBand",
+      "name": "Red",
+      "description": "Red band description",
+      "geocr:centerWavelength": {
+        "@type": "QuantitativeValue",
+        "value": 665,
+        "unitText": "nm"
+      },
+      "geocr:bandwidth": {
+        "@type": "QuantitativeValue",
+        "value": 30,
+        "unitText": "nm"
+      }
+    },
+    {
+      "@type": "geocr:SpectralBand",
+      "name": "NIR",
+      "description": "Near Infrared band description",
+      "geocr:centerWavelength": {
+        "@type": "QuantitativeValue",
+        "value": 865,
+        "unitText": "nm"
+      },
+      "geocr:bandwidth": {
+        "@type": "QuantitativeValue",
+        "value": 30,
+        "unitText": "nm"
+      }
+    },
+    {
+      "@type": "geocr:SpectralBand",
+      "name": "SWIR1",
+      "description": "Short Wave Infrared 1 band description",
+      "geocr:centerWavelength": {
+        "@type": "QuantitativeValue",
+        "value": 1610,
+        "unitText": "nm"
+      },
+      "geocr:bandwidth": {
+        "@type": "QuantitativeValue",
+        "value": 90,
+        "unitText": "nm"
+      }
+    },
+    {
+      "@type": "geocr:SpectralBand",
+      "name": "SWIR2",
+      "description": "Short Wave Infrared 2 band description",
+      "geocr:centerWavelength": {
+        "@type": "QuantitativeValue",
+        "value": 2200,
+        "unitText": "nm"
+      },
+      "geocr:bandwidth": {
+        "@type": "QuantitativeValue",
+        "value": 180,
+        "unitText": "nm"
+      }
+    },
+    {
+      "@type": "geocr:SpectralBand",
+      "name": "DEM",
+      "description": "Digital Elevation Model - example of non-spectral band",
+      "dataType": "Elevation"
+    }
+  ],
+  "geocr:solarInstrumentCharacteristics": {
+    "@type": "geocr:SolarInstrumentCharacteristics",
+    "geocr:observatory": "Observatory Name",
+    "geocr:instrument": "Instrument Name"
+  },
+  "geocr:multiWavelengthConfiguration": {
+    "@type": "geocr:MultiWavelengthConfiguration",
+    "geocr:channelList": [
+      "94Å",
+      "131Å",
+      "171Å",
+      "193Å"
+    ],
+    "description": "Multi-wavelength channels description"
+  },
+  "variableMeasured": [
+    {
+      "@type": "sc:PropertyValue",
+      "sc:name": "Variable Name 1",
+      "sc:value": "Variable Value 1"
+    },
+    {
+      "@type": "sc:PropertyValue",
+      "sc:name": "Variable Name 2",
+      "sc:value": "Variable Value 2"
+    }
+  ],
+  "distribution": [
+    {
+      "@type": "cr:FileObject",
+      "@id": "file_object_id",
+      "name": "file_object_name",
+      "description": "Description of the file object",
+      "contentUrl": "https://example.com/path/to/file.tif",
+      "encodingFormat": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "contentSize": "1024000",
+      "sha256": "sha256_checksum_here",
+      "md5": "md5_checksum_here",
+      "geocr:bandConfiguration": {
+        "@type": "geocr:BandConfiguration",
+        "geocr:totalBands": 4,
+        "geocr:bandNamesList": [
+          "Band1",
+          "Band2",
+          "Band3",
+          "Band4"
+        ]
+      }
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "data_repo",
+      "name": "data_repo",
+      "description": "Data repository or directory",
+      "contentUrl": "file://./local/path/to/directory",
+      "encodingFormat": "local_directory",
+      "sha256": "placeholder_checksum_for_directory"
+    },
+    {
+      "@type": "cr:FileSet",
+      "@id": "fileset_id",
+      "name": "fileset_name",
+      "description": "Description of the file set",
+      "containedIn": {
+        "@id": "data_repo"
+      },
+      "encodingFormat": "image/tiff",
+      "includes": "**/*.tif",
+      "fileObject": [
+        {
+          "@type": "cr:FileObject",
+          "name": "file1.tif",
+          "contentUrl": "https://example.com/files/file1.tif",
+          "encodingFormat": "image/tiff",
+          "contentSize": "512000"
+        },
+        {
+          "@type": "cr:FileObject",
+          "name": "file2.tif",
+          "contentUrl": "https://example.com/files/file2.tif",
+          "encodingFormat": "image/tiff",
+          "contentSize": "512000"
+        }
+      ]
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "zarr_data",
+      "name": "zarr_data",
+      "description": "Zarr format data cube",
+      "contentUrl": "https://example.com/path/to/data.zarr/",
+      "encodingFormat": "application/zarr",
+      "md5": "zarr_checksum_here"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "netcdf_data",
+      "name": "netcdf_data",
+      "description": "NetCDF format data",
+      "contentUrl": "https://example.com/path/to/data.nc",
+      "encodingFormat": "application/x-netcdf",
+      "sha256": "netcdf_checksum_here"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "hdf5_data",
+      "name": "hdf5_data",
+      "description": "HDF5 format data",
+      "contentUrl": "https://example.com/path/to/data.h5",
+      "encodingFormat": "application/x-hdf5",
+      "sha256": "hdf5_checksum_here"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "parquet_data",
+      "name": "parquet_data",
+      "description": "GeoParquet format data",
+      "contentUrl": "https://example.com/path/to/data.parquet",
+      "encodingFormat": "application/x-parquet",
+      "sha256": "parquet_checksum_here"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "csv_data",
+      "name": "csv_data",
+      "description": "CSV format tabular data",
+      "contentUrl": "https://example.com/path/to/data.csv",
+      "encodingFormat": "text/csv",
+      "sha256": "csv_checksum_here"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "json_data",
+      "name": "json_data",
+      "description": "JSON format data or metadata",
+      "contentUrl": "https://example.com/path/to/data.json",
+      "encodingFormat": "application/json",
+      "sha256": "json_checksum_here"
+    }
+  ],
+  "recordSet": [
+    {
+      "@type": "cr:RecordSet",
+      "@id": "recordset_fileset",
+      "name": "recordset_fileset",
+      "description": "RecordSet example using FileSet source - for image collections",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "field_id_1",
+          "name": "field_name_1",
+          "description": "Description of field 1 - File path field with regex filter",
+          "dataType": "sc:Text",
+          "source": {
+            "fileSet": {
+              "@id": "fileset_id"
+            },
+            "extract": {
+              "fileProperty": "fullpath"
+            },
+            "transform": {
+              "regex": ".*_pattern\\.tif$"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "field_id_2",
+          "name": "field_name_2",
+          "description": "Description of field 2 - Image field with band configuration",
+          "dataType": "sc:ImageObject",
+          "source": {
+            "fileSet": {
+              "@id": "fileset_id"
+            },
+            "extract": {
+              "fileProperty": "fullpath"
+            }
+          },
+          "geocr:bandConfiguration": {
+            "@type": "geocr:BandConfiguration",
+            "geocr:totalBands": 6,
+            "geocr:bandNameList": [
+              "Blue",
+              "Green",
+              "Red",
+              "NIR",
+              "SWIR1",
+              "SWIR2"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "@type": "cr:RecordSet",
+      "@id": "recordset_fileobject",
+      "name": "recordset_fileobject",
+      "description": "RecordSet example using FileObject source - for tabular/structured data",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "field_id_3",
+          "name": "field_name_3",
+          "description": "Description of field 3 - Float field",
+          "dataType": "sc:Float",
+          "source": {
+            "fileObject": {
+              "@id": "file_object_id"
+            },
+            "extract": {
+              "column": "column_name"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "field_id_4",
+          "name": "field_name_4",
+          "description": "Description of field 4 - DateTime field",
+          "dataType": "sc:DateTime",
+          "source": {
+            "fileObject": {
+              "@id": "file_object_id"
+            },
+            "extract": {
+              "column": "datetime"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "field_id_6",
+          "name": "field_name_6",
+          "description": "Description of field 6 - Integer field",
+          "dataType": "sc:Integer",
+          "source": {
+            "fileObject": {
+              "@id": "file_object_id"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "latitude",
+          "name": "latitude",
+          "description": "Latitude coordinate",
+          "dataType": "sc:Float",
+          "source": {
+            "fileObject": {
+              "@id": "file_object_id"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "longitude",
+          "name": "longitude",
+          "description": "Longitude coordinate",
+          "dataType": "sc:Float",
+          "source": {
+            "fileObject": {
+              "@id": "file_object_id"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "time",
+          "name": "time",
+          "description": "Time coordinate",
+          "dataType": "sc:Text",
+          "source": {
+            "fileObject": {
+              "@id": "file_object_id"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "@type": "cr:RecordSet",
+      "@id": "recordset_parquet",
+      "name": "recordset_parquet",
+      "description": "RecordSet example using GeoParquet source - for vector/feature data",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "field_id_5",
+          "name": "field_name_5",
+          "description": "Description of field 5 - URL field with JSON path transform",
+          "dataType": "sc:URL",
+          "source": {
+            "fileObject": {
+              "@id": "parquet_data"
+            },
+            "extract": {
+              "column": "assets"
+            },
+            "transform": {
+              "jsonPath": "$.image.href"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "field_id_7",
+          "name": "field_name_7",
+          "description": "Description of field 7 - Geometry field (WKB)",
+          "dataType": "sc:Text",
+          "source": {
+            "fileObject": {
+              "@id": "parquet_data"
+            },
+            "extract": {
+              "column": "geometry"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

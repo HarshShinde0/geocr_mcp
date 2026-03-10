@@ -1,4 +1,4 @@
-"""GeoCR MCP Server — thin data pipes, the AI writes all code."""
+"""GeoCR MCP Server"""
 import json
 import os
 import asyncio
@@ -103,10 +103,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         )
         path = await asyncio.to_thread(
             generate_geocroissant_metadata,
-            os.path.join(os.getcwd(), "generated_datasets", arguments["output_filename"]),
+            os.path.join(os.getcwd(), "output", arguments["output_filename"]),
             arguments["bbox"], arguments["modalities"], stac
         )
-        return _text(f"✅ Generated: {path}")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return _text(f"Generated: {path}\n\n```json\n{content}\n```")
 
     if name == "serve_geocroissant":
         try:

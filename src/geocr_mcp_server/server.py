@@ -81,18 +81,23 @@ except Exception as e:
 
 def main():
     """Run the MCP server (stdio by default; SSE/HTTP for hosted setups)."""
+    # Cloud environments (Render, Railway, Heroku, Cloud Run) set PORT or RENDER
+    is_cloud = bool(os.getenv('PORT') or os.getenv('RENDER'))
+    default_transport = os.getenv('GEOCR_TRANSPORT', 'streamable-http' if is_cloud else 'stdio')
+    default_host = os.getenv('GEOCR_HOST', '0.0.0.0' if is_cloud else '127.0.0.1')
+
     parser = argparse.ArgumentParser(
         prog='geocr-mcp-server', description='Croissant / GeoCroissant MCP server'
     )
     parser.add_argument(
         '--transport',
         choices=['stdio', 'sse', 'streamable-http'],
-        default=os.getenv('GEOCR_TRANSPORT', 'stdio'),
-        help='Transport mode (default: stdio or GEOCR_TRANSPORT env)',
+        default=default_transport,
+        help='Transport mode (default: stdio locally, streamable-http in cloud)',
     )
     parser.add_argument(
         '--host',
-        default=os.getenv('GEOCR_HOST', '127.0.0.1'),
+        default=default_host,
         help='Bind host for sse/streamable-http transports',
     )
     parser.add_argument(

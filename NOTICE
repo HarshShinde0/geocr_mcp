@@ -1,0 +1,3 @@
+This server implements and serves the GeoCroissant specification:
+http://mlcommons.org/croissant/geo/1.0
+GeoCroissant extends MLCommons Croissant.

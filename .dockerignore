@@ -1,0 +1,15 @@
+# Keep the build context minimal - the Dockerfile only needs pyproject.toml,
+# uv.lock, README.md, src/ and docker-healthcheck.sh.
+.git
+.venv
+.coverage
+.pytest_cache
+.ruff_cache
+**/__pycache__
+tests
+docs
+CHANGELOG.md
+NOTICE
+Procfile
+.python-version
+requirements.txt

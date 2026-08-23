@@ -1,0 +1,122 @@
+# STAC catalog registry for the geocr MCP server.
+#
+# This file is shipped as package data and loaded at import time by
+# ``geocr_mcp_server.catalogs``. Point the ``GEOCR_CATALOGS_CONFIG``
+# environment variable at a copy of this file to register your own catalogs,
+# modalities, keyword heuristics or topics without changing code.
+
+# Sensor modalities the server understands. Must cover every key used under a
+# catalog's ``common`` mapping and under ``modality_hints``.
+modalities:
+  - optical
+  - radar
+  - elevation
+
+# Default maximum cloud cover (%) applied to scene searches when the caller
+# does not pass one explicitly.
+default_cloud_cover: 20.0
+
+# Keyword heuristics used to classify a STAC collection by modality when the
+# catalog does not expose it explicitly. Order matters: the first modality with
+# a matching hint wins, so keep the most specific sensors (radar, elevation)
+# ahead of the broad optical bucket.
+modality_hints:
+  radar:
+    - sar
+    - sentinel-1
+    - -grd
+    - slc
+    - palsar
+    - uavsar
+    - nisar
+    - radarsat
+  elevation:
+    - dem
+    - elevation
+    - topograph
+    - altimetry
+    - icesat
+    - nasadem
+    - cop-dem
+    - arcticdem
+    - bathymetr
+  optical:
+    - sentinel-2
+    - landsat
+    - hls
+    - modis
+    - viirs
+    - surface-reflectance
+    - naip
+    - ortho
+    - aerial
+    - planet-scope
+    - skysat
+    - aster
+    - s2
+
+# Registered STAC catalogs, keyed by a short lowercase id.
+#
+# Collection ids below were audited against the live API on 2026-08-23:
+# GET https://earth-search.aws.element84.com/v1/collections returns exactly
+# nine collections - sentinel-2-c1-l2a, sentinel-2-l2a, sentinel-2-l1c,
+# sentinel-2-pre-c1-l2a, landsat-c2-l2, sentinel-1-grd, cop-dem-glo-30,
+# cop-dem-glo-90 and naip.
+catalogs:
+  earth-search:
+    name: Earth Search (Element84 / AWS Open Data)
+    url: https://earth-search.aws.element84.com/v1
+    description: >-
+      STAC API over AWS Open Data EO assets. Collections: sentinel-2-c1-l2a,
+      sentinel-2-l2a, sentinel-2-l1c, sentinel-2-pre-c1-l2a, landsat-c2-l2,
+      sentinel-1-grd, cop-dem-glo-30, cop-dem-glo-90, naip.
+    common:
+      optical:
+        - sentinel-2-c1-l2a
+        - sentinel-2-l2a
+        - sentinel-2-l1c
+        - landsat-c2-l2
+        - naip
+      radar:
+        - sentinel-1-grd
+      elevation:
+        - cop-dem-glo-30
+        - cop-dem-glo-90
+
+# Theme -> collections mapping. Topics are matched as substrings of the
+# user's free-text query and take precedence over plain keyword search.
+# Every id listed here must exist on the target catalog.
+topics:
+  flood: ["sentinel-1-grd", "sentinel-2-c1-l2a"]
+  wildfire: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  fire: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  burn: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  vegetation: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  ndvi: ["sentinel-2-c1-l2a"]
+  evi: ["sentinel-2-c1-l2a"]
+  urban: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
+  water: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
+  forest: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  agriculture: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  crop: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  soil: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  snow: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
+  coastal: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
+  sentinel: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
+  sentinel-2: ["sentinel-2-c1-l2a"]
+  sentinel-1: ["sentinel-1-grd"]
+  landsat: ["landsat-c2-l2"]
+  multimodal: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
+  fusion: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
+  aerial: ["naip"]
+  elevation: ["cop-dem-glo-30", "cop-dem-glo-90"]
+  dem: ["cop-dem-glo-30", "cop-dem-glo-90"]
+  terrain: ["cop-dem-glo-30", "cop-dem-glo-90"]
+  topography: ["cop-dem-glo-30", "cop-dem-glo-90"]
+  optical: ["sentinel-2-c1-l2a", "sentinel-2-l2a", "landsat-c2-l2"]
+  radar: ["sentinel-1-grd"]
+  sar: ["sentinel-1-grd"]
+  thermal: ["landsat-c2-l2"]
+  classification: ["sentinel-2-c1-l2a"]
+  landcover: ["sentinel-2-c1-l2a"]
+  toa: ["sentinel-2-l1c"]

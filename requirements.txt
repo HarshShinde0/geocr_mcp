@@ -1,0 +1,7 @@
+# Runtime dependencies (mirror of pyproject.toml for pip-only environments).
+# mlcroissant comes from the GeoCroissant fork carrying core + geo support.
+geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main
+mcp[cli]>=1.9.0,<2.0.0
+pydantic>=2.10.6
+loguru>=0.7.0
+uvicorn[standard]>=0.23.0

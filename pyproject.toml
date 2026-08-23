@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 dependencies = [
     "mlcroissant @ git+https://github.com/HarshShinde0/croissant.git@main#subdirectory=python/mlcroissant",
     "loguru>=0.7.0",
-    "mcp[cli]>=1.9.0,<2.0.0",
+    "mcp[cli]>=1.9.0,<3.0.0",
     "pydantic>=2.10.6",
     "pystac-client>=0.8.0",
     "pyyaml>=6.0.0",

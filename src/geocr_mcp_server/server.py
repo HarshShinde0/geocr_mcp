@@ -111,6 +111,10 @@ def main():
     mcp.settings.host = args.host
     mcp.settings.port = args.port
 
+    if (is_cloud or args.host == '0.0.0.0') and mcp.settings.transport_security:
+        mcp.settings.transport_security.allowed_hosts = ['*']
+        mcp.settings.transport_security.allowed_origins = ['*']
+
     logger.info(f'geocr-mcp-server v{__version__} starting ({args.transport})')
     mcp.run(transport=args.transport)
 

@@ -94,7 +94,9 @@ except Exception as e:
 
 @mcp.custom_route('/', methods=['GET', 'HEAD'])
 async def root_status(request):
+    """Health status root endpoint for Render and monitoring tools."""
     from starlette.responses import JSONResponse
+
 
     return JSONResponse({
         'status': 'online',

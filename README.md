@@ -188,16 +188,39 @@ git clone https://github.com/HarshShinde0/geocr_mcp.git   # or this monorepo
 </details>
 
 <details>
-<summary>Hosted deployment (SSE / streamable HTTP)</summary>
+<summary>Hosted deployment (Render / Cloud / HTTP / SSE)</summary>
 
-Run the same server with an HTTP transport for shared/remote usage:
+Run the same server with an HTTP transport for shared/remote cloud usage:
 
 ```bash
-geocr-mcp-server --transport streamable-http --host 127.0.0.1 --port 8000
+geocr-mcp-server --transport streamable-http --host 0.0.0.0 --port $PORT
 ```
 
-Point your client at `http://127.0.0.1:8000/mcp`. Behind a reverse proxy,
-terminate TLS at the proxy and keep the container on a private network.
+#### Deploy on Render (1-Click Blueprint)
+
+This repository includes a `render.yaml` blueprint:
+
+1. Log in to [Render Dashboard](https://dashboard.render.com).
+2. Click **New +** -> **Blueprint** and connect repository `HarshShinde0/geocr_mcp`.
+3. Click **Apply**. Render will automatically build the container and deploy the server.
+
+Live endpoint: `https://geocr-mcp-server.onrender.com/mcp`
+
+#### Connecting Clients to Hosted MCP
+
+In your AI client, IDE, or agent configuration (`mcpServers`):
+
+```json
+{
+  "mcpServers": {
+    "geocr-remote": {
+      "url": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+Behind a custom reverse proxy, terminate TLS at the proxy and set `GEOCR_HOST=0.0.0.0` and `GEOCR_TRANSPORT=streamable-http`.
 </details>
 
 ## Environment variables

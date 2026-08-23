@@ -76,6 +76,10 @@ consuming:  inspect_geocroissant -> get_records_preview -> extract_distribution_
 authoring:  create_geocroissant_scaffold -> edit -> validate_croissant
 ```
 
+> [!TIP]
+> **Remote Client / Cloud Usage**: When connected to a remote hosted server (e.g. on Render), the generated GeoCroissant document is returned directly inline under `json_ld` in the tool response. Remote agents / IDE clients should write `json_ld` straight to their local workspace rather than attempting to read `path` from the remote container.
+
+
 ## Installation
 
 No clone needed - pip/uvx fetch both `geocr-mcp` and its `mlcroissant` dependency straight from GitHub. Cloning is only required for development.

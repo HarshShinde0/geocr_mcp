@@ -9,3 +9,5 @@ services:
         value: 0.0.0.0
       - key: GEOCR_TRANSPORT
         value: streamable-http
+    healthCheckPath: /
+

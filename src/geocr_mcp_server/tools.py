@@ -219,7 +219,7 @@ class GeoCroissantTools:
             str, Field(description='Description of the generated dataset.')
         ] = '',
         license: Annotated[str, Field(description='License URL.')] = '',
-        creators: Annotated[list[str], Field(description='Creator names.')] = [],
+        creators: Annotated[list[str] | None, Field(description='Creator names.')] = None,
         output_filename: Annotated[
             str,
             Field(
@@ -676,7 +676,7 @@ class GeoCroissantTools:
             - rows: List of records keyed by fully-qualified field ids.
             - truncated: True if more records exist beyond `limit`.
         """
-        limit = max(1, min(int(limit), MAX_RECORDS_LIMIT))
+        limit = max(1, min(limit, MAX_RECORDS_LIMIT))
         try:
             source_arg = common.resolve_jsonld_input(
                 jsonld_content=jsonld_content or None,
@@ -801,9 +801,9 @@ class GeoCroissantTools:
         version: Annotated[str, Field(description='Dataset version, e.g. "1.0".')] = '',
         date_published: Annotated[str, Field(description='Publication date as YYYY-MM-DD.')] = '',
         creators: Annotated[
-            list[str],
+            list[str] | None,
             Field(description='Creator names (rendered as sc:Organization entries).'),
-        ] = [],
+        ] = None,
         bbox: Annotated[
             list[float] | None,
             Field(

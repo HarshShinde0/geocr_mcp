@@ -28,8 +28,12 @@ def _read_config_text() -> str:
             return handle.read()
     package, filename = _PACKAGE_CONFIG
     return (
-        resources.files('geocr_mcp_server').joinpath(package, filename).read_text(encoding='utf-8')
+        resources.files('geocr_mcp_server')
+        .joinpath(package)
+        .joinpath(filename)
+        .read_text(encoding='utf-8')
     )
+
 
 
 @lru_cache(maxsize=1)

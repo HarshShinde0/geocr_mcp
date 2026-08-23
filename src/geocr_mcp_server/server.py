@@ -87,8 +87,8 @@ def main():
     parser.add_argument(
         '--transport',
         choices=['stdio', 'sse', 'streamable-http'],
-        default='stdio',
-        help='Transport mode (default: stdio)',
+        default=os.getenv('GEOCR_TRANSPORT', 'stdio'),
+        help='Transport mode (default: stdio or GEOCR_TRANSPORT env)',
     )
     parser.add_argument(
         '--host',
@@ -98,7 +98,7 @@ def main():
     parser.add_argument(
         '--port',
         type=int,
-        default=int(os.getenv('GEOCR_PORT', '8000')),
+        default=int(os.getenv('GEOCR_PORT', os.getenv('PORT', '8000'))),
         help='Port for sse/streamable-http transports',
     )
     args = parser.parse_args()

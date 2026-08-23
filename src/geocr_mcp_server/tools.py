@@ -373,7 +373,7 @@ class GeoCroissantTools:
         """Runs mlcroissant static analysis synchronously."""
         from mlcroissant import ValidationError
 
-        source_desc = 'inline JSON content' if isinstance(source, dict) else str(source)
+        source_desc = 'inline JSON content' if isinstance(source, dict) else source
         report = {
             'valid': False,
             'source': source_desc,

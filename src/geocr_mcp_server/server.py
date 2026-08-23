@@ -92,7 +92,7 @@ except Exception as e:
     raise
 
 
-@mcp.custom_route('/', methods=['GET'])
+@mcp.custom_route('/', methods=['GET', 'HEAD'])
 async def root_status(request):
     from starlette.responses import JSONResponse
 

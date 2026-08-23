@@ -92,6 +92,20 @@ except Exception as e:
     raise
 
 
+@mcp.custom_route('/', methods=['GET'])
+async def root_status(request):
+    from starlette.responses import JSONResponse
+
+    return JSONResponse({
+        'status': 'online',
+        'server': 'geocr-mcp-server',
+        'version': __version__,
+        'description': 'GeoCroissant MCP Server is running and healthy.',
+        'mcp_endpoint': '/mcp',
+        'documentation': 'https://github.com/HarshShinde0/geocr_mcp',
+    })
+
+
 def main():
     """Run the MCP server (stdio by default; SSE/HTTP for hosted setups)."""
     # Cloud environments (Render, Railway, Heroku, Cloud Run) set PORT or RENDER

@@ -89,6 +89,7 @@ def build_scaffold(
     field_is_array: bool = False,
     field_array_shape: str | None = None,
     source_file_set_id: str | None = None,
+    cite_as: str = '',
 ) -> dict[str, Any]:
     """Builds a GeoCroissant JSON-LD document from structured parameters.
 
@@ -117,6 +118,8 @@ def build_scaffold(
         doc['description'] = description
     if license:
         doc['license'] = license
+    if cite_as:
+        doc['citeAs'] = cite_as
     if version:
         doc['version'] = version
     if date_published:
@@ -231,19 +234,53 @@ def _band_configuration(band_names: list[str]) -> dict[str, Any]:
 
 
 def _spectral_band(band: dict[str, Any]) -> dict[str, Any]:
-    center_value = band.get('centerWavelengthValue', band.get('value'))
-    center_unit = band.get('centerWavelengthUnit', band.get('unit', 'nm'))
     entry: dict[str, Any] = {
         '@type': 'geocr:SpectralBand',
         'name': band.get('name'),
     }
-    if center_value is not None:
-        entry['geocr:centerWavelength'] = _quantitative(center_value, center_unit)
-    if band.get('bandwidthValue') is not None:
-        entry['geocr:bandwidth'] = _quantitative(
-            band.get('bandwidthValue'), band.get('bandwidthUnit')
+
+    # Center wavelength
+    center = band.get('geocr:centerWavelength') or band.get('centerWavelength')
+    if isinstance(center, dict):
+        if center.get('@type') == 'QuantitativeValue' and 'value' in center:
+            entry['geocr:centerWavelength'] = center
+        else:
+            val = center.get('value')
+            unit = center.get('unitText') or center.get('unit', 'nm')
+            if val is not None:
+                entry['geocr:centerWavelength'] = _quantitative(val, unit)
+    elif center is not None:
+        entry['geocr:centerWavelength'] = _quantitative(
+            center, band.get('centerWavelengthUnit', band.get('unit', 'nm'))
         )
+    else:
+        center_val = band.get('centerWavelengthValue', band.get('value'))
+        center_unit = band.get('centerWavelengthUnit', band.get('unit', 'nm'))
+        if center_val is not None:
+            entry['geocr:centerWavelength'] = _quantitative(center_val, center_unit)
+
+    # Bandwidth
+    width = band.get('geocr:bandwidth') or band.get('bandwidth')
+    if isinstance(width, dict):
+        if width.get('@type') == 'QuantitativeValue' and 'value' in width:
+            entry['geocr:bandwidth'] = width
+        else:
+            val = width.get('value')
+            unit = width.get('unitText') or width.get('unit', 'nm')
+            if val is not None:
+                entry['geocr:bandwidth'] = _quantitative(val, unit)
+    elif width is not None:
+        entry['geocr:bandwidth'] = _quantitative(
+            width, band.get('bandwidthUnit', band.get('unit', 'nm'))
+        )
+    else:
+        width_val = band.get('bandwidthValue')
+        width_unit = band.get('bandwidthUnit')
+        if width_val is not None:
+            entry['geocr:bandwidth'] = _quantitative(width_val, width_unit)
+
     return entry
+
 
 
 def _build_record_set(

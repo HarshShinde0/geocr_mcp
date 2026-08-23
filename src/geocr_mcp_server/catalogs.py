@@ -139,3 +139,14 @@ def list_catalogs() -> list[dict[str, Any]]:
         }
         for cid, cat in sorted(catalogs.items())
     ]
+
+
+def static_collections() -> set[str]:
+    """Returns collection ids of static datasets (e.g. elevation models)."""
+    config = get_config()
+    return {
+        coll
+        for cat in config['catalogs'].values()
+        for coll in (cat.get('common') or {}).get('elevation', [])
+    }
+

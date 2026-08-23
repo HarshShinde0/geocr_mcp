@@ -899,6 +899,9 @@ class GeoCroissantTools:
                 'Defaults to the first declared distribution entry.'
             ),
         ] = None,
+        cite_as: Annotated[
+            str, Field(description='Citation (BibTeX or URL) for the dataset.')
+        ] = '',
         output_filename: Annotated[
             str,
             Field(
@@ -940,6 +943,7 @@ class GeoCroissantTools:
                 name=name,
                 description=description,
                 license=license,
+                cite_as=cite_as,
                 version=version,
                 date_published=date_published,
                 creators=creators or [],

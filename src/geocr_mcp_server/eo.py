@@ -568,6 +568,7 @@ def geocroissant_from_stac(
     raw_items: list[dict[str, Any]],
     record_set_name: str = 'scenes',
     max_distribution_assets: int = 6,
+    cite_as: str = '',
 ) -> dict[str, Any]:
     """Builds a GeoCroissant JSON-LD document from Earth Search results.
 
@@ -591,6 +592,8 @@ def geocroissant_from_stac(
         doc['description'] = description
     if license_url:
         doc['license'] = license_url
+    if cite_as:
+        doc['citeAs'] = cite_as
     if creators:
         doc['creator'] = [{'@type': 'Organization', 'name': c} for c in creators]
 

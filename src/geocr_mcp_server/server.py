@@ -13,13 +13,26 @@ from geocr_mcp_server import __version__
 from geocr_mcp_server.tools import GeoCroissantTools
 from loguru import logger
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 
 logger.remove()
 logger.add(sys.stderr, level=os.getenv('FASTMCP_LOG_LEVEL', 'WARNING'))
 
+is_cloud = bool(os.getenv('PORT') or os.getenv('RENDER'))
+transport_sec = (
+    TransportSecuritySettings(
+        enable_dns_rebinding_protection=False,
+        allowed_hosts=['*'],
+        allowed_origins=['*'],
+    )
+    if is_cloud
+    else None
+)
+
 mcp = FastMCP(
     'geocr-mcp-server',
+    transport_security=transport_sec,
     instructions=f"""
 # Croissant / GeoCroissant MCP Server (v{__version__})
 

@@ -5,7 +5,7 @@ specification (`docs/croissant-geo-spec.md` in the croissant repository) and
 the produced documents are validated at runtime through ``mlcroissant``.
 """
 
-from typing import Any
+from typing import Any, Sequence
 
 
 CROISSANT_CONFORMANCE = 'http://mlcommons.org/croissant/1.1'
@@ -347,7 +347,7 @@ def _build_record_set(
     return record_set
 
 
-def _parse_bbox(bbox: list[float] | str) -> tuple[float, float, float, float]:
+def _parse_bbox(bbox: Sequence[float | int] | str) -> tuple[float, float, float, float]:
     """Parses [min_lon, min_lat, max_lon, max_lat] into a lon/lat quartet."""
     if isinstance(bbox, str):
         parts = [p.strip() for p in bbox.split(',')]

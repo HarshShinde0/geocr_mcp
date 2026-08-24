@@ -1,9 +1,7 @@
-"""geocr MCP Server implementation.
+"""GeoCroissant MCP server implementation.
 
-Exposes MLCommons Croissant / GeoCroissant capabilities to LLM agents:
-validation through the official ``mlcroissant`` library, structured dataset
-inspection, structure-graph extraction, record materialization and validated
-GeoCroissant metadata scaffolding.
+Exposes Earth observation discovery and Croissant and GeoCroissant metadata
+operations to MCP clients.
 """
 
 import argparse
@@ -37,43 +35,56 @@ mcp = FastMCP(
 # Croissant / GeoCroissant MCP Server (v{__version__})
 
 Discover **Earth observation (EO) datasets** and turn them into
-**GeoCroissant** - the geospatial extension of the MLCommons Croissant
-machine-actionable JSON-LD dataset format. All parsing, validation and record
-extraction are performed by the official `mlcroissant` Python library; all
-discovery runs against the live Earth Search STAC API (AWS Open Data,
-https://earth-search.aws.element84.com/v1).
+**GeoCroissant**, the geospatial extension of the MLCommons Croissant JSON-LD
+dataset format. Discovery queries registered STAC APIs. The configured
+`mlcroissant` package handles metadata parsing, validation, structure graphs,
+and record materialization.
 
 ## Capabilities
-- **EO discovery**: keyword search over EO collections, spatial scene search
-  (bbox + datetime + cloud cover) across registered STAC catalogs.
-- **STAC -> GeoCroissant**: generate standards-conformant metadata directly
-  from live search results (coverage, CRS, bands & spectral metadata,
-  distribution URLs, one record per scene) - validated before returned.
+- **EO discovery**: paginated collection inventories, provider metadata,
+    place-name geocoding, availability counts and spatial scene search.
+- **STAC -> GeoCroissant**: generate metadata from search results, including
+    coverage, CRS, band metadata, selected source URIs, and one record per scene.
+- **Multi-source composition**: combine independent searches from any
+    registered catalogs into source-specific RecordSets without assuming
+    spatial, temporal, spectral, or tensor alignment.
 - Validate any Croissant/GeoCroissant document (file, URL or inline JSON)
   with structured error/warning reports.
 - Inspect datasets: core metadata plus every `geocr:` property.
 - Extract the internal structure graph (nodes + directed edges).
-- List RecordSets, materialize actual records, extract download URLs.
-- Generate validated scaffolds from structured parameters.
+- List RecordSets, materialize records, and inspect distribution URIs.
+- Generate scaffolds from structured parameters.
 - Serve the GeoCroissant specification reference.
 
-## Recommended workflow
-1. Discover: `list_eo_catalogs` once, then `search_eo_datasets`
-   ("burn scar", "flood", modality=optical...) or straight to
-   `search_eo_scenes` with a bbox over the area of interest.
-2. Metadata: `create_geocroissant_from_stac` on promising results - it returns
-   a VALIDATED GeoCroissant document (and can write it via output_filename).
-3. Consume: `inspect_geocroissant`, `get_records_preview` (inline scene rows),
-   `extract_distribution_urls` for direct asset links; write training code
-   against actual field ids.
-4. Authoring from scratch: `create_geocroissant_scaffold` +
-   `validate_croissant`.
+## Natural-language request workflow
+The client LLM interprets the user's question; this server does not use
+hard-coded topic, keyword or modality routing.
+1. Extract the requested phenomenon/product, place, dates and constraints.
+    Ask the user only when a required choice is genuinely ambiguous.
+2. Resolve place names with `geocode_place` and let the user disambiguate
+    when multiple plausible candidates are returned.
+3. Call `list_eo_catalogs`, page through `search_eo_datasets`, and inspect
+    plausible candidates with `get_eo_dataset_details`. Select collections
+    from their live metadata, never from collection-id wording alone.
+4. Call `count_eo_scenes` to verify availability, then `search_eo_scenes`.
+5. Call `create_geocroissant_from_stac` for one search or
+    `create_geocroissant_from_stac_sources` for multiple independent sources.
+    Return its `json_ld`, validation report, and selected `asset_urls`. The
+    provider retains the data and may require credentials or a
+    provider-specific access method.
+6. Use `get_records_preview` for inline scene rows and
+    `extract_distribution_urls` to inspect an existing document.
 
 ## Best practices
 - Bounding boxes use [min_lon, min_lat, max_lon, max_lat] (EPSG:4326).
 - Keep `limit` modest: searches hit live STAC APIs; generation embeds scenes
   as inline records.
+- Use `max_cloud_cover` only when the chosen collection metadata supports
+    `eo:cloud_cover`.
+- Multi-source metadata preserves provenance but does not align or preprocess
+    the source data for a model.
 - Always re-run `validate_croissant` after editing any document.
+- Metadata validation does not verify that source assets exist or are accessible.
 """,
     dependencies=[
         'mlcroissant',
@@ -83,13 +94,9 @@ https://earth-search.aws.element84.com/v1).
     ],
 )
 
-try:
-    tools = GeoCroissantTools()
-    tools.register(mcp)
-    logger.info('GeoCroissant tools registered successfully')
-except Exception as e:
-    logger.error(f'Error initializing GeoCroissant tools: {e}')
-    raise
+tools = GeoCroissantTools()
+tools.register(mcp)
+logger.info('GeoCroissant tools registered successfully')
 
 
 @mcp.custom_route('/', methods=['GET', 'HEAD'])

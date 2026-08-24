@@ -17,17 +17,12 @@ ENV UV_COMPILE_BYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 
-COPY pyproject.toml README.md ./
-
-# Create venv and install dependencies
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv venv /app/.venv && \
-    uv pip install --python /app/.venv/bin/python .
-
-# Copy source and install package
+COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
+
+# Install the locked production environment and package once.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --python /app/.venv/bin/python --no-deps .
+    uv sync --frozen --no-dev --no-editable
 
 # Unprivileged runtime user
 RUN groupadd --system app && \
@@ -37,6 +32,8 @@ COPY docker-healthcheck.sh /usr/local/bin/docker-healthcheck.sh
 RUN chmod 755 /usr/local/bin/docker-healthcheck.sh
 
 USER app
+
+EXPOSE 8000
 
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
     CMD ["docker-healthcheck.sh"]

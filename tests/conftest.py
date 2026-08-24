@@ -7,7 +7,7 @@ from geocr_mcp_server.spec import official_context
 
 @pytest.fixture
 def valid_geocroissant() -> dict:
-    """A minimal but complete, valid GeoCroissant document (v1.1 + geo).
+    """A minimal valid GeoCroissant document (v1.1 + geo).
 
     Contains one FileSet-backed RecordSet (no downloads needed for static
     analysis) and one RecordSet with inline `cr:data` so that record

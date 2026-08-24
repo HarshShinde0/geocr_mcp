@@ -1,7 +1,6 @@
 """Data-driven STAC catalog registry.
 
-The registry (catalogs, modalities and keyword heuristics) lives in
-``config/catalogs.yaml``, shipped as package data. Set the
+The registry lives in ``config/catalogs.yaml``, shipped as package data. Set the
 ``GEOCR_CATALOGS_CONFIG`` environment variable to an alternate YAML file to
 register your own catalogs without changing code. The parsed config is cached
 after first load; call :func:`reload_config` to pick up changes.
@@ -50,45 +49,40 @@ def get_config() -> dict[str, Any]:
     if not isinstance(catalogs, dict) or not catalogs:
         raise ValueError('Catalog config must define a non-empty `catalogs` mapping.')
 
-    modalities = tuple(data.get('modalities') or ())
-    if not modalities:
-        raise ValueError('Catalog config must define a non-empty `modalities` list.')
-
+    normalized_catalogs: dict[str, dict[str, Any]] = {}
     for cid, cat in catalogs.items():
         if not isinstance(cat, dict) or not cat.get('url'):
             raise ValueError(f'Catalog `{cid}` is missing a `url`.')
+        normalized_id = str(cid).strip().lower()
+        if not normalized_id:
+            raise ValueError('Catalog ids must not be empty.')
         cat.setdefault('name', cid)
         cat.setdefault('description', '')
-        cat.setdefault('common', {})
-
-    topics = data.get('topics') or {}
-    if not isinstance(topics, dict):
-        raise ValueError('Catalog config `topics` must be a mapping.')
-    known_collections = {
-        coll
-        for cat in catalogs.values()
-        for colls in (cat.get('common') or {}).values()
-        for coll in colls or []
-    }
-    for topic, colls in topics.items():
-        if not isinstance(colls, list) or not colls:
-            raise ValueError(f'Topic `{topic}` must map to a non-empty list.')
-        unknown = [c for c in colls if c not in known_collections]
-        if unknown:
+        cat.setdefault('collections', [])
+        configured_collections = cat.get('collections') or []
+        if not isinstance(configured_collections, list):
             raise ValueError(
-                f'Topic `{topic}` references collections missing from every '
-                f"catalog's `common` lists: {unknown}."
+                f'Catalog `{normalized_id}` collections must be a list.'
             )
+        if any(not isinstance(coll, str) or not coll.strip() for coll in configured_collections):
+            raise ValueError(
+                f'Catalog `{normalized_id}` collections must contain non-empty strings.'
+            )
+        if len(configured_collections) != len(set(configured_collections)):
+            raise ValueError(f'Catalog `{normalized_id}` collections must be unique.')
+        normalized_catalogs[normalized_id] = cat
+
+    default_catalog = str(data.get('default_catalog') or '').strip().lower()
+    if not default_catalog:
+        default_catalog = next(iter(normalized_catalogs))
+    if default_catalog not in normalized_catalogs:
+        raise ValueError(
+            f'Default catalog `{default_catalog}` is not defined in `catalogs`.'
+        )
 
     return {
-        'modalities': modalities,
-        'default_cloud_cover': float(data.get('default_cloud_cover', 20.0)),
-        'modality_hints': tuple(
-            (modality, tuple(hints or ()))
-            for modality, hints in (data.get('modality_hints') or {}).items()
-        ),
-        'topics': {str(t).strip().lower(): list(colls) for t, colls in topics.items()},
-        'catalogs': {str(cid).strip().lower(): cat for cid, cat in catalogs.items()},
+        'default_catalog': default_catalog,
+        'catalogs': normalized_catalogs,
     }
 
 
@@ -97,40 +91,21 @@ def reload_config() -> None:
     get_config.cache_clear()
 
 
-def modalities() -> tuple[str, ...]:
-    """Returns the tuple of known sensor modalities."""
-    return get_config()['modalities']
-
-
-def default_cloud_cover() -> float:
-    """Returns the default max cloud cover (%) for scene searches."""
-    return get_config()['default_cloud_cover']
-
-
-def modality_hints() -> tuple[tuple[str, tuple[str, ...]], ...]:
-    """Returns ordered (modality, keyword-hints) pairs for classification."""
-    return get_config()['modality_hints']
-
-
-def topics() -> dict[str, list[str]]:
-    """Returns the theme -> collections mapping from the registry."""
-    return get_config()['topics']
-
-
-def get_catalog(catalog_id: str) -> dict[str, Any]:
+def get_catalog(catalog_id: str | None = None) -> dict[str, Any]:
     """Returns catalog metadata (with `id`) or raises ValueError if unknown."""
-    catalogs = get_config()['catalogs']
-    cid = (catalog_id or '').strip().lower()
-    cat = catalogs.get(cid)
+    config = get_config()
+    registered = config['catalogs']
+    cid = (catalog_id or config['default_catalog']).strip().lower()
+    cat = registered.get(cid)
     if cat is None:
         raise ValueError(
-            f'Unknown catalog "{catalog_id}". Available catalogs: {sorted(catalogs)}.'
+            f'Unknown catalog "{catalog_id}". Available catalogs: {sorted(registered)}.'
         )
     return {'id': cid, **cat}
 
 
 def list_catalogs() -> list[dict[str, Any]]:
-    """Lists all registered STAC catalogs with their modalities."""
+    """Lists all registered STAC catalogs."""
     catalogs = get_config()['catalogs']
     return [
         {
@@ -138,19 +113,9 @@ def list_catalogs() -> list[dict[str, Any]]:
             'name': cat['name'],
             'url': cat['url'],
             'description': cat['description'],
-            'modalities': sorted(cat['common'].keys()),
-            'common_collections': cat['common'],
+            'collection_discovery': 'live',
+            'configured_collection_count': len(cat['collections']),
         }
         for cid, cat in sorted(catalogs.items())
     ]
-
-
-def static_collections() -> set[str]:
-    """Returns collection ids of static datasets (e.g. elevation models)."""
-    config = get_config()
-    return {
-        coll
-        for cat in config['catalogs'].values()
-        for coll in (cat.get('common') or {}).get('elevation', [])
-    }
 

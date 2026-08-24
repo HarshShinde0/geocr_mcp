@@ -1,14 +1,13 @@
-"""Croissant / GeoCroissant tools for the MCP server.
+"""GeoCroissant tools exposed by the MCP server.
 
-Every tool is a thin, well-documented wrapper around the official
-``mlcroissant`` Python library. The library performs all parsing, static
-analysis (structure graph), validation and record materialization; these
-tools only adapt its inputs/outputs for LLM consumption.
+The server handles STAC discovery, geocoding, metadata conversion, and response
+formatting. The configured ``mlcroissant`` package handles parsing,
+validation, structure graphs, and record materialization.
 """
 
 import asyncio
 import json as json_lib
-from geocr_mcp_server import common, eo, reference, spec
+from geocr_mcp_server import common, composition, eo, geocoding, reference, spec
 from geocr_mcp_server.models import (
     DistributionUrls,
     RecordsPreview,
@@ -18,6 +17,7 @@ from geocr_mcp_server.models import (
 )
 from loguru import logger
 from mcp.server.fastmcp import Context
+from operator import itemgetter
 from pydantic import Field
 from typing import Annotated, Any
 
@@ -26,12 +26,16 @@ MAX_RECORDS_LIMIT = 100
 
 
 class GeoCroissantTools:
-    """Croissant / GeoCroissant tools exposed through the MCP server."""
+    """GeoCroissant tools exposed through the MCP server."""
 
     def register(self, mcp) -> None:
         """Registers all tools with the MCP server."""
+        mcp.tool(name='ping')(self.ping)
         mcp.tool(name='list_eo_catalogs')(self.list_eo_catalogs)
         mcp.tool(name='search_eo_datasets')(self.search_eo_datasets)
+        mcp.tool(name='get_eo_dataset_details')(self.get_eo_dataset_details)
+        mcp.tool(name='geocode_place')(self.geocode_place)
+        mcp.tool(name='count_eo_scenes')(self.count_eo_scenes)
         mcp.tool(name='search_eo_scenes')(self.search_eo_scenes)
         mcp.tool(name='validate_croissant')(self.validate_croissant)
         mcp.tool(name='inspect_geocroissant')(self.inspect_geocroissant)
@@ -41,7 +45,14 @@ class GeoCroissantTools:
         mcp.tool(name='extract_distribution_urls')(self.extract_distribution_urls)
         mcp.tool(name='create_geocroissant_scaffold')(self.create_geocroissant_scaffold)
         mcp.tool(name='create_geocroissant_from_stac')(self.create_geocroissant_from_stac)
+        mcp.tool(name='create_geocroissant_from_stac_sources')(
+            self.create_geocroissant_from_stac_sources
+        )
         mcp.tool(name='get_geocroissant_spec_reference')(self.get_geocroissant_spec_reference)
+
+    async def ping(self) -> str:
+        """Returns pong to confirm that the MCP server is available."""
+        return 'pong'
 
     # ------------------------------------------------------------------
     # 0. EO dataset discovery (STAC)
@@ -50,19 +61,9 @@ class GeoCroissantTools:
     async def list_eo_catalogs(self, ctx: Context) -> dict[str, Any]:
         """Lists the Earth observation STAC catalogs registered on this server.
 
-        The registry is data-driven (config/catalogs.yaml): today it contains
-        Element84 Earth Search over AWS Open Data
-        (https://earth-search.aws.element84.com/v1) with its searchable
-        modalities, curated collections and topic keywords.
-
-        Usage: Call once to see where EO data can be discovered from before
-        using `search_eo_datasets` / `search_eo_scenes`.
-
-        Returns:
-        --------
-        Dictionary containing:
-            - catalogs: Registered catalogs with id, name, URL, description,
-              modalities, common collections and supported topics.
+        The active YAML registry supplies each provider endpoint and an
+        informational collection snapshot. Live discovery still queries the
+        provider.
         """
         del ctx
         return {'catalogs': eo.list_catalogs()}
@@ -70,54 +71,128 @@ class GeoCroissantTools:
     async def search_eo_datasets(
         self,
         ctx: Context,
-        query: Annotated[
-            str,
-            Field(
-                description=(
-                    "Free-text query. Topics like 'flood', 'wildfire', 'ndvi', "
-                    "'urban' resolve to curated collections; other words "
-                    'keyword-match collection metadata. Empty lists all.'
-                )
-            ),
-        ] = '',
-        modality: Annotated[
+        catalog_id: Annotated[
             str | None,
-            Field(description='Filter by sensor modality: optical | radar | elevation.'),
+            Field(description='Registered STAC catalog id. Defaults to earth-search.'),
         ] = None,
+        limit: Annotated[
+            int,
+            Field(description='Maximum collections returned (1-500). Use 500 to inventory a catalog.'),
+        ] = 15,
+        offset: Annotated[
+            int,
+            Field(description='Zero-based collection offset for pagination.'),
+        ] = 0,
     ) -> dict[str, Any]:
-        """Searches Earth observation DATASETS (STAC collections) by keyword.
+        """Lists Earth observation datasets represented by STAC collections.
 
-        Performs collection-level search on the Earth Search STAC API
-        (AWS Open Data). Queries hit the topics map first ('flood' -> Sentinel-1
-        + Sentinel-2, 'dem' -> Copernicus DEM...), then fall back to keyword
-        matching against live collection metadata; every hit is classified by
-        sensor modality (optical / radar / elevation).
+        Reads collection metadata directly from the selected registered STAC
+        API without keyword, topic or modality inference.
 
-        Usage: Start here for dataset-level discovery ("find me flood/burn
-        scar/terrain datasets"). Then use the returned collection ids with
-        `search_eo_scenes`, or jump straight to `create_geocroissant_from_stac`
-        to get GeoCroissant metadata.
-
-        Returns:
-        --------
-        Dictionary containing:
-            - matched_topics: Topic-map hits for the query.
-            - count: Number of matching collections found.
-            - collections: Matches with catalog, collection id, title,
-              description snippet, modality, license and temporal extent.
+        Use returned collection IDs with `search_eo_scenes`, `count_eo_scenes`,
+        or `create_geocroissant_from_stac`.
         """
         try:
-            result = await asyncio.to_thread(eo.search_collections, query=query, modality=modality)
-            await ctx.info(f"search_eo_datasets('{query}') -> {result['count']} hits")
+            result = await asyncio.to_thread(
+                eo.search_collections,
+                limit=limit,
+                offset=offset,
+                catalog_id=catalog_id,
+            )
+            await ctx.info(f"search_eo_datasets -> {result['count']} collections")
             return result
         except ValueError as e:
             logger.warning(f'Invalid input for search_eo_datasets: {e}')
             await ctx.error(str(e))
             raise ValueError(str(e)) from e
-        except Exception as e:
-            logger.error(f'Error in search_eo_datasets: {e}')
-            await ctx.error(f'Error searching EO datasets: {e}')
-            raise
+
+    async def get_eo_dataset_details(
+        self,
+        ctx: Context,
+        collection_id: Annotated[
+            str,
+            Field(description='Exact STAC collection id returned by search_eo_datasets.'),
+        ],
+        catalog_id: Annotated[
+            str | None,
+            Field(description='Registered STAC catalog id. Defaults to earth-search.'),
+        ] = None,
+    ) -> dict[str, Any]:
+        """Returns provider metadata for one EO dataset.
+
+        Use this after collection discovery so the LLM can inspect spatial and
+        temporal extent, providers, bands, assets, summaries and links before
+        selecting a collection for scene search.
+        """
+        try:
+            result = await asyncio.to_thread(
+                eo.get_collection_details,
+                collection_id=collection_id,
+                catalog_id=catalog_id,
+            )
+            await ctx.info(f'Loaded STAC metadata for `{collection_id}`')
+            return result
+        except ValueError as e:
+            await ctx.error(str(e))
+            raise ValueError(str(e)) from e
+
+    async def geocode_place(
+        self,
+        ctx: Context,
+        place_name: Annotated[
+            str,
+            Field(description='Human place name, such as "Delhi, India".'),
+        ],
+        limit: Annotated[int, Field(description='Maximum candidate locations (1-10).')] = 5,
+    ) -> dict[str, Any]:
+        """Resolves a human place name to candidate EPSG:4326 bounding boxes."""
+        try:
+            result = await asyncio.to_thread(geocoding.geocode_place, place_name, limit)
+            await ctx.info(f'geocode_place -> {result["count"]} candidate(s)')
+            return result
+        except ValueError as e:
+            await ctx.error(str(e))
+            raise ValueError(str(e)) from e
+
+    async def count_eo_scenes(
+        self,
+        ctx: Context,
+        bbox: Annotated[
+            list[float],
+            Field(description='Bounding box as [min_lon, min_lat, max_lon, max_lat].'),
+        ],
+        collections: Annotated[
+            list[str],
+            Field(description='One or more explicit STAC collection ids.'),
+        ],
+        catalog_id: Annotated[
+            str | None,
+            Field(description='Registered STAC catalog id. Defaults to earth-search.'),
+        ] = None,
+        datetime_range: Annotated[
+            str | None,
+            Field(description='STAC datetime interval, e.g. "2023-01-01/2023-12-31".'),
+        ] = None,
+        max_cloud_cover: Annotated[
+            float | None,
+            Field(description='Optional maximum eo:cloud_cover percentage.'),
+        ] = None,
+    ) -> dict[str, Any]:
+        """Counts matching scenes before requesting or generating records."""
+        try:
+            result = await asyncio.to_thread(
+                eo.count_scenes,
+                bbox=bbox,
+                collections=collections,
+                datetime_range=datetime_range,
+                max_cloud_cover=max_cloud_cover,
+                catalog_id=catalog_id,
+            )
+            await ctx.info(f'count_eo_scenes -> {result["total_matched"]} matching scene(s)')
+            return result
+        except ValueError as e:
+            await ctx.error(str(e))
+            raise ValueError(str(e)) from e
 
     async def search_eo_scenes(
         self,
@@ -127,15 +202,12 @@ class GeoCroissantTools:
             Field(description='Bounding box as [min_lon, min_lat, max_lon, max_lat].'),
         ],
         collections: Annotated[
-            list[str] | None,
-            Field(
-                description='Explicit STAC collection ids. Defaults to curated '
-                'collections for the chosen modality.'
-            ),
-        ] = None,
-        modality: Annotated[
+            list[str],
+            Field(description='One or more explicit STAC collection ids.'),
+        ],
+        catalog_id: Annotated[
             str | None,
-            Field(description='Modality used to pick default collections.'),
+            Field(description='Registered STAC catalog id. Defaults to earth-search.'),
         ] = None,
         datetime_range: Annotated[
             str | None,
@@ -150,22 +222,12 @@ class GeoCroissantTools:
         ] = None,
         limit: Annotated[int, Field(description='Max scenes returned (1-50).')] = 10,
     ) -> dict[str, Any]:
-        """Searches satellite SCENES inside a bounding box on Earth Search.
+        """Searches Earth observation records inside a bounding box.
 
-        Executes a real STAC item search (pystac-client) against
-        https://earth-search.aws.element84.com/v1 filtered by spatial extent,
-        time range and cloud cover. Scenes are the individual acquisitions
-        (tiles/granules) that become records of a GeoCroissant dataset.
-
-        Usage: Use after `search_eo_datasets` (or directly with known
-        collections) to check actual data availability for an area of interest.
-        Feed promising results into `create_geocroissant_from_stac`.
-
-        Returns:
-        --------
-        Dictionary containing:
-            - scene_count and scenes: Per-scene id, collection, acquisition
-              datetime, platform, cloud cover, native EPSG and asset keys.
+        The selected STAC service applies the spatial, temporal, and supported
+        provider-specific filters. Results include scene identifiers,
+        acquisition times, platforms, cloud cover, native EPSG codes, and
+        available asset keys.
         """
         try:
 
@@ -173,10 +235,10 @@ class GeoCroissantTools:
                 result = eo.search_scenes(
                     bbox=bbox,
                     collections=collections,
-                    modality=modality,
                     datetime_range=datetime_range,
                     max_cloud_cover=max_cloud_cover,
                     limit=limit,
+                    catalog_id=catalog_id,
                 )
                 result.pop('_raw_items', None)
                 return result
@@ -191,10 +253,6 @@ class GeoCroissantTools:
             logger.warning(f'Invalid input for search_eo_scenes: {e}')
             await ctx.error(str(e))
             raise ValueError(str(e)) from e
-        except Exception as e:
-            logger.error(f'Error in search_eo_scenes: {e}')
-            await ctx.error(f'Error searching EO scenes: {e}')
-            raise
 
     async def create_geocroissant_from_stac(
         self,
@@ -205,15 +263,16 @@ class GeoCroissantTools:
             Field(description='Bounding box as [min_lon, min_lat, max_lon, max_lat].'),
         ],
         collections: Annotated[
-            list[str] | None, Field(description='Explicit STAC collection ids.')
-        ] = None,
-        modality: Annotated[
-            str | None, Field(description='Modality used to pick default collections.')
+            list[str], Field(description='One or more explicit STAC collection ids.')
+        ],
+        catalog_id: Annotated[
+            str | None,
+            Field(description='Registered STAC catalog id. Defaults to earth-search.'),
         ] = None,
         datetime_range: Annotated[str | None, Field(description='STAC datetime interval.')] = None,
         max_cloud_cover: Annotated[
             float | None, Field(description='Max cloud cover percentage.')
-        ] = 20,
+        ] = None,
         limit: Annotated[int, Field(description='Number of scenes to include (1-50).')] = 5,
         description: Annotated[
             str, Field(description='Description of the generated dataset.')
@@ -223,45 +282,28 @@ class GeoCroissantTools:
         output_filename: Annotated[
             str,
             Field(
-                description='When provided, writes the validated JSON-LD into '
+                description='When provided, writes the generated JSON-LD into '
                 'GEOCR_OUTPUT_DIR (or temp dir) and returns the path.'
             ),
         ] = '',
     ) -> dict[str, Any]:
-        """Searches live EO data and generates VALIDATED GeoCroissant metadata from it.
+        """Searches STAC and generates GeoCroissant metadata for matching scenes.
 
-        This is the flagship end-to-end pipeline of this server:
-
-        1. Runs a real STAC search (bbox + collections + datetime + cloud cover).
-        2. Derives GeoCroissant properties from the results: schema.org spatial/
-           temporal coverage, CRS (EPSG:4326), record endpoint, band
-           configuration and spectral band metadata from `eo:bands`
-           (micrometers converted to nanometers), distribution FileObjects for
-           direct asset URLs, and a RecordSet with one inline row per scene.
-        3. Validates the document through the official `mlcroissant` library
-           before returning it.
-
-        Usage: THE tool for turning discovered EO data into GeoCroissant.
-        After generation use `inspect_geocroissant`, `get_records_preview`
-        and `extract_distribution_urls` on the output.
-
-        Returns:
-        --------
-        Dictionary containing:
-            - valid/errors/warnings: mlcroissant validation outcome.
-            - json_ld: The generated GeoCroissant document.
-            - path: Output file path when output_filename was given.
-            - search_summary: What was searched and how many scenes matched.
+        The document includes spatial and temporal coverage, CRS and band
+        metadata, selected provider-native asset URIs, and one inline record per
+        scene. The response includes the generated JSON-LD, search summary,
+        selected asset URIs, and the result of ``mlcroissant`` metadata
+        validation. Validation does not test asset existence or access.
         """
 
         def _generate():
             search = eo.search_scenes(
                 bbox=bbox,
                 collections=collections,
-                modality=modality,
                 datetime_range=datetime_range,
                 max_cloud_cover=max_cloud_cover,
                 limit=limit,
+                catalog_id=catalog_id,
             )
             raw_items = search.pop('_raw_items')
             doc = eo.geocroissant_from_stac(
@@ -270,15 +312,19 @@ class GeoCroissantTools:
                 license_url=license,
                 creators=creators or [],
                 raw_items=raw_items,
+                catalog_id=catalog_id,
             )
             validation = self._validate_sync(doc)
             path = None
             if output_filename:
                 path = str(common.write_json_ld(doc, common.secure_output_path(output_filename)))
+            asset_urls = list(map(itemgetter('contentUrl'), doc.get('distribution', [])))
             return {
                 **validation,
                 'json_ld': doc,
                 'path': path,
+                'asset_urls': asset_urls,
+                'asset_count': len(asset_urls),
                 'search_summary': {
                     'catalog': search['catalog'],
                     'collections_searched': search['collections_searched'],
@@ -300,10 +346,97 @@ class GeoCroissantTools:
             logger.warning(f'Cannot generate GeoCroissant from STAC: {e}')
             await ctx.error(str(e))
             raise ValueError(str(e)) from e
-        except Exception as e:
-            logger.error(f'Error in create_geocroissant_from_stac: {e}')
-            await ctx.error(f'Error generating GeoCroissant from STAC: {e}')
-            raise
+
+    async def create_geocroissant_from_stac_sources(
+        self,
+        ctx: Context,
+        name: Annotated[str, Field(description='Name for the generated dataset.')],
+        sources: Annotated[
+            list[dict[str, Any]],
+            Field(
+                description='Independent STAC searches. Each object requires catalog_id, '
+                'collection_id, and bbox; source_id, datetime_range, max_cloud_cover, and '
+                'limit are optional.'
+            ),
+        ],
+        description: Annotated[
+            str, Field(description='Description of the generated dataset.')
+        ] = '',
+        license: Annotated[str, Field(description='License URL for the composed dataset.')] = '',
+        creators: Annotated[list[str] | None, Field(description='Creator names.')] = None,
+        output_filename: Annotated[
+            str,
+            Field(
+                description='When provided, writes the generated JSON-LD into '
+                'GEOCR_OUTPUT_DIR (or temp dir) and returns the path.'
+            ),
+        ] = '',
+    ) -> dict[str, Any]:
+        """Combines any supported catalog and collection searches into one dataset.
+
+        Every source is searched independently, so its filters and limit do not
+        affect other sources. The generated GeoCroissant keeps one RecordSet per
+        source and does not claim that heterogeneous rasters are aligned or share
+        one band configuration. Provider-native asset URIs are preserved.
+        """
+
+        def _generate():
+            source_results = composition.search_sources(sources)
+            document = composition.compose_document(
+                name=name.strip(),
+                description=description,
+                license_url=license,
+                creators=creators or [],
+                source_results=source_results,
+            )
+            validation = self._validate_sync(document)
+            path = None
+            if output_filename:
+                path = str(
+                    common.write_json_ld(
+                        document,
+                        common.secure_output_path(output_filename),
+                    )
+                )
+            assets = composition.asset_manifest(source_results)
+            source_summaries = [
+                {
+                    'source_id': result['source_id'],
+                    'catalog_id': result['catalog_id'],
+                    'collection_id': result['collection_id'],
+                    'bbox': result['search']['bbox'],
+                    'datetime_range': result['search']['datetime_range'],
+                    'max_cloud_cover': result['search']['max_cloud_cover'],
+                    'requested_limit': result['limit'],
+                    'scene_count': result['search']['scene_count'],
+                    'notes': result['search']['notes'],
+                }
+                for result in source_results
+            ]
+            asset_urls = list(map(itemgetter('contentUrl'), document.get('distribution', [])))
+            return {
+                **validation,
+                'json_ld': document,
+                'path': path,
+                'asset_urls': asset_urls,
+                'asset_count': len(asset_urls),
+                'assets': assets,
+                'source_results': source_summaries,
+                'scene_count': sum(result['scene_count'] for result in source_summaries),
+            }
+
+        try:
+            result = await asyncio.to_thread(_generate)
+            status = 'passed' if result['valid'] else 'FAILED'
+            await ctx.info(
+                f'GeoCroissant `{name}` from {len(result["source_results"])} source(s) '
+                f'and {result["scene_count"]} scene(s): validation {status}'
+            )
+            return result
+        except ValueError as e:
+            logger.warning(f'Cannot compose GeoCroissant from STAC sources: {e}')
+            await ctx.error(str(e))
+            raise ValueError(str(e)) from e
 
     # ------------------------------------------------------------------
     # 1. Validation
@@ -327,23 +460,10 @@ class GeoCroissantTools:
     ) -> dict[str, Any]:
         """Validates a Croissant or GeoCroissant JSON-LD document.
 
-        Runs the official MLCommons ``mlcroissant`` validator: JSON syntax check,
+        Runs the configured ``mlcroissant`` validator: JSON syntax checks,
         JSON-LD expansion, structure-graph construction (FileObjects/FileSets,
-        RecordSets, Fields, sources & joins) and full schema conformance checks.
-
-        Usage: Call this tool whenever a dataset description is created or edited,
-        BEFORE publishing it, and after any modification of an existing file.
-        Works for both plain Croissant documents and documents using the
-        GeoCroissant extension (`geocr:` properties).
-
-        Returns:
-        --------
-        Dictionary containing:
-            - valid: True when the document passes validation.
-            - errors: Blocking errors reported by the library (empty when valid).
-            - warnings: Non-blocking recommendations (e.g. missing license).
-            - is_geospatial: Whether GeoCroissant conformance is declared.
-            - conforms_to / dataset_name: Extracted metadata when loadable.
+        RecordSets, Fields, sources, and joins), and schema conformance checks.
+        It does not verify remote asset availability or authorization.
         """
         try:
             source_arg = common.resolve_jsonld_input(
@@ -363,10 +483,6 @@ class GeoCroissantTools:
             logger.warning(f'Invalid input for validate_croissant: {e}')
             await ctx.error(str(e))
             raise ValueError(str(e)) from e
-        except Exception as e:
-            logger.error(f'Error in validate_croissant: {e}')
-            await ctx.error(f'Error validating Croissant document: {e}')
-            raise
         return await asyncio.to_thread(self._validate_sync, source_arg)
 
     def _validate_sync(self, source: dict[str, Any] | str) -> dict[str, Any]:
@@ -427,24 +543,9 @@ class GeoCroissantTools:
     ) -> dict[str, Any]:
         """Inspects a Croissant/GeoCroissant document and returns a structured summary.
 
-        Parses the document through the ``mlcroissant`` library (which also acts as
-        a strict syntax/schema check - invalid documents are rejected) and returns
-        a structured digest: core metadata, GeoCroissant extension properties
-        (CRS, resolutions, band configuration, spectral bands, record endpoint...),
-        distribution entries (FileObjects/FileSets with URLs, formats, hashes),
-        and every RecordSet with its Fields (data types, array shapes,
-        source/extract/transform chains).
-
-        Usage: Use this tool to READ and UNDERSTAND a dataset description before
-        consuming it, comparing datasets, or planning how to load records.
-
-        Returns:
-        --------
-        Dictionary containing:
-            - name/description/license/version/conformsTo and other core metadata.
-            - geospatial: All declared `geocr:` extension properties.
-            - distribution: FileObject/FileSet entries.
-            - record_sets: RecordSets with nested fields and geo properties.
+        Parses the document with ``mlcroissant`` and summarizes core metadata,
+        GeoCroissant properties, distribution entries, RecordSets, Fields, array
+        shapes, and source, extraction, and transformation chains.
         """
         try:
             source_arg = common.resolve_jsonld_input(
@@ -492,21 +593,9 @@ class GeoCroissantTools:
     ) -> StructureGraph:
         """Extracts the internal structure graph of a Croissant document.
 
-        Builds the directed multigraph that ``mlcroissant`` uses internally for
-        static analysis: nodes are Metadata / FileObject / FileSet / RecordSet /
-        Field objects and edges connect fields to their data sources, record sets
-        to their fields, files to archives they are contained in, and referenced
-        (foreign-key) fields.
-
-        Usage: Use this tool to reason about dataset lineage and dependencies,
-        e.g. "which files feed this field?", "what does this join look like?",
-        or to explain a dataset's architecture before writing loading code.
-
-        Returns:
-        --------
-        StructureGraph containing:
-            - nodes: Every node with @id, type, name and parent @id.
-            - edges: Directed edges as {source, target} @id pairs.
+        Nodes represent Metadata, FileObject, FileSet, RecordSet, and Field
+        objects. Directed edges represent containment, source, and reference
+        relationships in the graph built by ``mlcroissant``.
         """
         try:
             source_arg = common.resolve_jsonld_input(
@@ -574,21 +663,9 @@ class GeoCroissantTools:
     ) -> list[dict[str, Any]]:
         """Lists the RecordSets of a Croissant/GeoCroissant document.
 
-        A RecordSet is a collection of records (rows/examples) produced by
-        applying the declared extraction pipeline to the distribution. This tool
-        returns each RecordSet's @id, name, description, key fields, enumeration
-        flag, number of inline records/examples and its Fields with their data
-        types and source chains.
-
-        Usage: Call this tool to discover what data a dataset exposes and which
-        RecordSet names to pass to `get_records_preview`.
-
-        Returns:
-        --------
-        List of dictionaries, one per RecordSet, each including:
-            - @id: The RecordSet identifier used by other tools.
-            - fields: Nested field summaries (dataType, isArray/arrayShape,
-              source extract/transform chain, geo band properties).
+        Each summary includes the RecordSet identifier, key fields, inline data
+        count, and nested Field types and source chains. Pass a returned
+        identifier to `get_records_preview`.
         """
         try:
             source_arg = common.resolve_jsonld_input(
@@ -655,26 +732,11 @@ class GeoCroissantTools:
     ) -> RecordsPreview:
         """Materializes the first records of a RecordSet by executing the data pipeline.
 
-        This tool runs the real ``mlcroissant`` operation graph: it downloads (or
-        resolves locally) the declared FileObjects/FileSets, applies extracts and
-        transforms, and yields actual records - exactly what
-        ``Dataset.records(record_set)`` yields in Python.
-
-        Usage: Use it to preview/sample a dataset's actual data before writing
-        training code, or to sanity-check that a generated Croissant description
-        produces the expected columns and values.
-
-        IMPORTANT: For remote distributions this may download data; keep `limit`
-        small on large datasets. Datasets with inline `cr:data` return those rows
-        directly without downloads.
-
-        Returns:
-        --------
-        RecordsPreview containing:
-            - record_set: The RecordSet @id that was read.
-            - columns: Column names found across returned records.
-            - rows: List of records keyed by fully-qualified field ids.
-            - truncated: True if more records exist beyond `limit`.
+        Uses ``Dataset.records(record_set)`` to resolve local or remote
+        distributions and apply declared extraction and transformation steps.
+        Remote sources may require downloads and credentials. Inline `cr:data`
+        records do not require distribution access. ``truncated`` is true when
+        the preview reaches the requested limit; more records may exist.
         """
         limit = max(1, min(limit, MAX_RECORDS_LIMIT))
         try:
@@ -738,21 +800,15 @@ class GeoCroissantTools:
             str, Field(description='Raw JSON string of a Croissant document.')
         ] = '',
     ) -> DistributionUrls:
-        """Extracts downloadable URLs from a Croissant document's distribution.
+        """Extracts source asset URIs from a Croissant document's distribution.
 
         Collects the `contentUrl` of every FileObject together with its encoding
         formats, sizes and checksums, plus FileSet include patterns and archive
-        containers. These are the direct access points for the dataset bytes.
+        containers. Access may require credentials appropriate for each URI scheme.
 
-        Usage: Use this tool to obtain concrete download links (e.g. GeoTIFF /
-        COG / ZIP assets) for ingestion code without parsing the JSON manually.
-
-        Returns:
-        --------
-        DistributionUrls containing:
-            - urls: One entry per distribution item (name, type, contentUrl,
-              encodingFormat, md5/sha256, includes/containedIn when present).
-            - count: Number of distribution items with at least one URL.
+                Returns one summary per distribution entry, including names, types,
+                source URIs, formats, checksums, include patterns, and container
+                references when declared. Access depends on the source provider.
         """
         try:
             source_arg = common.resolve_jsonld_input(
@@ -767,10 +823,7 @@ class GeoCroissantTools:
 
         def _extract() -> DistributionUrls:
             dataset = common.load_dataset(source_arg)
-            urls = []
-            for entry in common.summarize_distribution(dataset.metadata):
-                if entry.get('contentUrl') or entry.get('includes'):
-                    urls.append(entry)
+            urls = common.summarize_distribution(dataset.metadata)
             return DistributionUrls(urls=urls, count=len(urls))
 
         try:
@@ -906,37 +959,25 @@ class GeoCroissantTools:
             str,
             Field(
                 description=(
-                    'When provided, writes the validated JSON-LD to this filename '
+                    'When provided, writes the generated JSON-LD to this filename '
                     'inside GEOCR_OUTPUT_DIR (or the system temp dir) and returns '
                     'the path.'
                 )
             ),
         ] = '',
     ) -> ScaffoldResult:
-        """Generates a validated GeoCroissant JSON-LD scaffold from parameters.
+        """Generates a GeoCroissant JSON-LD scaffold from parameters.
 
-        Produces a standards-conformant starting point modeled on the official
-        GeoCroissant example: correct @context (including the `geocr` prefix),
+        Produces a starting point based on the GeoCroissant example: an @context
+        containing the `geocr` prefix,
         dual conformance (`croissant/1.1` + `geocr`), schema.org spatial/temporal
         coverage, GeoCroissant properties (CRS, resolutions, band configuration,
         spectral bands), distribution entries and a RecordSet wired to them via
-        proper cr:source/cr:extract declarations.
+        cr:source and cr:extract declarations.
 
-        The generated document is then parsed and checked by the real
-        ``mlcroissant`` validator, so `valid=True` means the scaffold already
-        passes the official library checks.
-
-        Usage: Call FIRST when creating new dataset metadata, then edit the
-        returned JSON-LD for domain specifics and re-check with
-        `validate_croissant`. Use `inspect_geocroissant` afterwards to review it.
-
-        Returns:
-        --------
-        ScaffoldResult containing:
-            - valid: Whether the scaffold passed mlcroissant validation.
-            - json_ld: The generated document.
-            - errors/warnings: Library messages when not fully clean.
-            - path: Output file path when output_filename was given.
+        The response includes the generated document and its ``mlcroissant``
+        metadata validation result. Edit domain-specific values and validate the
+        document again before publication.
         """
         try:
             scaffold = spec.build_scaffold(
@@ -989,17 +1030,12 @@ class GeoCroissantTools:
                 path=path,
             )
 
-        try:
-            result = await asyncio.to_thread(_finalize)
-            level = 'passed' if result.valid else 'FAILED'
-            await ctx.info(
-                f'Scaffold `{name}` validation {level}' + (f'; written to {path}' if path else '')
-            )
-            return result
-        except Exception as e:
-            logger.error(f'Error in create_geocroissant_scaffold: {e}')
-            await ctx.error(f'Error generating GeoCroissant scaffold: {e}')
-            raise
+        result = await asyncio.to_thread(_finalize)
+        level = 'passed' if result.valid else 'FAILED'
+        await ctx.info(
+            f'Scaffold `{name}` validation {level}' + (f'; written to {path}' if path else '')
+        )
+        return result
 
     # ------------------------------------------------------------------
     # 8. Spec reference
@@ -1014,27 +1050,17 @@ class GeoCroissantTools:
                 description=(
                     'Which part of the specification to return. One of: "overview", '
                     '"context" (@context snippet), "properties" (all geocr '
-                    'properties), "example" (full sample document), '
-                    '"python-api" (mlcroissant usage snippets), "all" (everything).'
+                    'properties), "example" (sample document), '
+                    '"python-api" (mlcroissant usage snippets), "all" (all topics).'
                 )
             ),
         ] = 'all',
     ) -> str:
         """Returns the GeoCroissant specification reference documentation.
 
-        Provides the vocabulary cheat sheet distilled from the official GeoCroissant
-        specification: namespace IRIs and prefixes, conformance declarations, every
-        `geocr:` property with expected types/domains/cardinality, the canonical
-        JSON-LD @context, a full sample document, and Python snippets for the
-        ``mlcroissant`` API (load, validate, iterate records).
-
-        Usage: Read this ONCE before authoring or editing GeoCroissant documents so
-        property names, types and cardinalities match the specification exactly.
-        Then use `create_geocroissant_scaffold` and `validate_croissant`.
-
-        Returns:
-        --------
-        Markdown-formatted reference documentation for the requested topic.
+        Returns namespace IRIs, conformance declarations, GeoCroissant property
+        types and cardinalities, the JSON-LD context used by the server, a
+        condensed example, and ``mlcroissant`` usage notes.
         """
         del ctx  # No side effects; kept for FastMCP signature consistency.
         topic_normalized = (topic or 'all').strip().lower()

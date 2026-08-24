@@ -6,8 +6,8 @@ format:
 1. ``search_collections`` / ``search_scenes`` discover datasets and scenes
    from registered STAC APIs via pystac-client.
 2. ``geocroissant_from_stac`` converts STAC results into a GeoCroissant
-   JSON-LD document which is then validated by the official ``mlcroissant``
-   library in the tool layer.
+    JSON-LD document. The tool layer then runs metadata validation with the
+    configured ``mlcroissant`` package.
 
 The catalog registry itself is data-driven: see
 ``geocr_mcp_server/catalogs.py`` and the shipped
@@ -29,52 +29,12 @@ from typing import Any
 
 def get_catalog(catalog_id: str | None = None) -> dict[str, Any]:
     """Returns catalog metadata by id from the YAML registry."""
-    cid = catalog_id or next(iter(catalogs.get_config()['catalogs']))
-    return catalogs.get_catalog(cid)
+    return catalogs.get_catalog(catalog_id)
 
 
 def list_catalogs() -> list[dict[str, Any]]:
-    """Lists all registered STAC catalogs with their modalities and topics."""
-    entries = catalogs.list_catalogs()
-    for entry in entries:
-        entry['topics'] = sorted(catalogs.topics().keys())
-    return entries
-
-
-def resolve_topic(query: str) -> tuple[list[str], list[str]]:
-    """Resolves a free-text query against the topics map.
-
-    Returns (matched_topics, collections). Topics that are substrings of
-    another matched topic (e.g. 'fire' inside 'wildfire') are dropped.
-    Falls back to the multimodal default when nothing matches.
-    """
-    topics = catalogs.topics()
-    query_lower = (query or '').lower()
-    matched = [topic for topic in topics if topic in query_lower]
-    # Drop redundant sub-topic matches ('fire' ⊂ 'wildfire').
-    matched = [t for t in matched if not any(t != o and t in o for o in matched)]
-    if not matched:
-        return [], list(topics.get('multimodal', []))
-    collections: list[str] = []
-    for topic in matched:
-        for coll in topics[topic]:
-            if coll not in collections:
-                collections.append(coll)
-    return matched, collections
-
-
-def guess_modality(collection: dict[str, Any]) -> str | None:
-    """Guesses the sensor modality of a STAC collection from its metadata."""
-    text = ' '.join(
-        str(collection.get(key) or '') for key in ('id', 'title', 'description')
-    ).lower()
-    keywords = collection.get('keywords') or []
-    if isinstance(keywords, list):
-        text += ' ' + ' '.join(str(k).lower() for k in keywords)
-    for modality, hints in catalogs.modality_hints():
-        if any(hint in text for hint in hints):
-            return modality
-    return None
+    """Lists all registered STAC catalogs."""
+    return catalogs.list_catalogs()
 
 
 def _open_client(url: str):
@@ -85,40 +45,40 @@ def _open_client(url: str):
 
 
 def search_collections(
-    query: str = '',
-    modality: str | None = None,
     limit: int = 15,
+    offset: int = 0,
+    catalog_id: str | None = None,
 ) -> dict[str, Any]:
-    """Searches EO datasets across Earth Search by theme or free text.
-
-    Resolution order:
-    1. TOPICS map hit (e.g. "flood", "ndvi") -> curated collections.
-    2. Otherwise: keyword match against live collection metadata
-       (id/title/description), classified by modality heuristic.
-    Collection summaries are fetched from the live API.
-    """
-    if modality and modality not in catalogs.modalities():
-        raise ValueError(
-            f'Unknown modality "{modality}". Choose one of {list(catalogs.modalities())}.'
-        )
-    cat = get_catalog()
-    topics, themed_collections = resolve_topic(query)
-    terms = [t.lower() for t in (query or '').split() if t.strip()]
+    """Lists a page of live EO datasets from a registered STAC catalog."""
+    cat = get_catalog(catalog_id)
+    capped_limit = max(1, min(int(limit), 500))
+    page_offset = max(0, int(offset))
 
     client = _open_client(cat['url'])
-    results: list[dict[str, Any]] = []
 
     def _summarize(coll: dict[str, Any]) -> dict[str, Any]:
-        extent = (coll.get('extent') or {}).get('temporal') or {}
-        intervals = extent.get('interval') or [[]]
+        extent = coll.get('extent') or {}
+        temporal = extent.get('temporal') or {}
+        intervals = temporal.get('interval') or [[]]
         interval = intervals[0] if intervals else []
+        spatial = extent.get('spatial') or {}
+        providers = coll.get('providers') or []
         return {
             'catalog': cat['id'],
             'collection': coll.get('id'),
             'title': coll.get('title') or coll.get('id'),
-            'description': (coll.get('description') or '')[:280],
-            'modality': guess_modality(coll),
+            'description': (coll.get('description') or '')[:1000],
             'license': coll.get('license'),
+            'keywords': coll.get('keywords') or [],
+            'providers': [
+                {
+                    'name': provider.get('name'),
+                    'roles': provider.get('roles') or [],
+                    'url': provider.get('url'),
+                }
+                for provider in providers
+            ],
+            'spatial_extent': spatial.get('bbox') or [],
             'temporal_extent': [
                 i
                 for i in (
@@ -127,68 +87,40 @@ def search_collections(
                 )
                 if i
             ],
+            'item_asset_keys': sorted((coll.get('item_assets') or {}).keys()),
+            'summaries': coll.get('summaries') or {},
         }
 
     all_collections = [c.to_dict() for c in client.get_collections()]
-    by_id = {c.get('id'): c for c in all_collections}
-
-    if topics:
-        # Themed resolution: exact collections from the topic map.
-        for cid in themed_collections:
-            coll = by_id.get(cid)
-            if coll is not None:
-                results.append(_summarize(coll))
-    else:
-        for coll in all_collections:
-            guessed = guess_modality(coll)
-            if modality and guessed != modality:
-                continue
-            text = ' '.join(
-                str(coll.get(key) or '') for key in ('id', 'title', 'description')
-            ).lower()
-            if terms and not any(term in text for term in terms):
-                continue
-            results.append(_summarize(coll))
-            if len(results) >= limit:
-                break
+    page = all_collections[page_offset : page_offset + capped_limit]
+    results = [_summarize(coll) for coll in page]
+    next_offset = page_offset + len(results)
 
     return {
-        'query': query,
-        'matched_topics': topics,
+        'catalog': cat['id'],
+        'offset': page_offset,
         'count': len(results),
+        'total_catalog_collections': len(all_collections),
+        'truncated': next_offset < len(all_collections),
+        'next_offset': next_offset if next_offset < len(all_collections) else None,
         'collections': results,
     }
 
 
-def default_collections_for(modality: str | None) -> list[str]:
-    """Curated collection ids for a modality (all modalities when None)."""
-    cat = get_catalog()
-    if not modality:
-        return [c for lists in cat['common'].values() for c in lists]
-    return list(cat['common'].get(modality, []))
-
-
-def _optical_collections() -> set[str]:
-    """Collection ids whose items carry `eo:cloud_cover` (optical only).
-
-    The STAC `query` extension drops every item lacking the filtered
-    property, so applying a cloud filter to radar/elevation/aerial
-    collections returns zero scenes (verified live against Earth Search:
-    sentinel-1-grd goes from 2343 hits to 0 with `eo:cloud_cover < 20`).
-    """
-    return set(get_catalog()['common'].get('optical', []))
-
-
-# Approximate extent of NAIP coverage (contiguous United States). Searches
-# whose bbox lies fully outside this envelope would return zero scenes.
-_CONUS_BBOX = (-125.0, 24.5, -66.0, 49.5)
-
-
-def _bboxes_overlap(
-    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
-) -> bool:
-    """Axis-aligned bbox intersection test in [min_lon, min_lat, max_lon, max_lat]."""
-    return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
+def get_collection_details(
+    collection_id: str,
+    catalog_id: str | None = None,
+) -> dict[str, Any]:
+    """Returns provider STAC metadata for one collection."""
+    requested_id = collection_id.strip()
+    if not requested_id:
+        raise ValueError('collection_id must not be empty.')
+    cat = get_catalog(catalog_id)
+    collection = _open_client(cat['url']).get_collection(requested_id)
+    return {
+        'catalog': cat['id'],
+        'collection': collection.to_dict(),
+    }
 
 
 def _validated_bbox(bbox: list[float]) -> tuple[float, float, float, float]:
@@ -207,54 +139,29 @@ def _validated_bbox(bbox: list[float]) -> tuple[float, float, float, float]:
 
 def _resolve_targets(
     collections: list[str] | None,
-    modality: str | None,
-    bbox4: tuple[float, float, float, float],
-) -> tuple[list[str], list[str]]:
-    """Resolves the target collection ids, applying coverage guards.
-
-    Returns the targets plus human-readable notes about adjustments (NAIP is
-    dropped when the bbox lies outside its CONUS-only footprint).
-    """
-    targets = (
-        list(collections) if collections is not None else default_collections_for(modality)
-    )
+) -> list[str]:
+    """Validates the explicit target collection ids."""
+    targets = list(collections or [])
     if not targets:
         raise ValueError(
-            'No known collections for this search. Pass explicit '
-            '`collections` or use `search_eo_datasets` first.'
+            'Pass at least one explicit `collections` id. Use '
+            '`search_eo_datasets` to list the selected catalog first.'
         )
-    notes: list[str] = []
-    if 'naip' in targets and not _bboxes_overlap(bbox4, _CONUS_BBOX):
-        targets = [c for c in targets if c != 'naip']
-        notes.append(
-            'naip excluded: it covers the contiguous United States only and '
-            'the requested bbox lies outside CONUS.'
-        )
-        if not targets:
-            raise ValueError(
-                'The only requested collection (naip) covers the contiguous '
-                'United States; provide a bbox inside the US.'
-            )
-    return targets, notes
+    return targets
 
 
 def _query_kwargs(
     targets: list[str],
+    bbox: tuple[float, float, float, float],
     datetime_range: str | None,
     max_cloud_cover: float | None,
     page_limit: int,
     max_items: int | None,
-    notes: list[str],
 ) -> dict[str, Any]:
-    """Builds STAC /search parameters with property-aware filtering guards.
-
-    - datetime filtering is skipped when every target collection is a static
-      mosaic (e.g. elevation), which carries no meaningful acquisition time.
-    - cloud-cover querying applies only when every target is optical, because
-      the STAC `query` extension silently drops items lacking the property.
-    """
+    """Builds STAC search parameters from explicit user filters."""
     kwargs: dict[str, Any] = {
         'collections': targets,
+        'bbox': list(bbox),
         # Newest acquisitions first (Earth Search supports item-search#sort).
         'sortby': ['-properties.datetime'],
         # pystac-client: `limit` is the page size.
@@ -262,16 +169,9 @@ def _query_kwargs(
     }
     if max_items is not None:
         kwargs['max_items'] = max_items
-    all_static = all(c in catalogs.static_collections() for c in targets)
     if datetime_range:
-        if all_static:
-            notes.append(
-                'datetime_range ignored: every target collection is a static '
-                'mosaic without acquisition times.'
-            )
-        else:
-            kwargs['datetime'] = datetime_range
-    if max_cloud_cover is not None and all(c in _optical_collections() for c in targets):
+        kwargs['datetime'] = datetime_range
+    if max_cloud_cover is not None:
         kwargs['query'] = {'eo:cloud_cover': {'lt': float(max_cloud_cover)}}
     return kwargs
 
@@ -279,28 +179,29 @@ def _query_kwargs(
 def search_scenes(
     bbox: list[float],
     collections: list[str] | None = None,
-    modality: str | None = None,
     datetime_range: str | None = None,
-    max_cloud_cover: float | None = catalogs.default_cloud_cover(),
+    max_cloud_cover: float | None = None,
     limit: int = 10,
+    catalog_id: str | None = None,
 ) -> dict[str, Any]:
     """Searches satellite scenes (STAC Items) inside a bounding box.
 
     Returns summarized scenes plus the raw STAC item dicts needed by
     ``geocroissant_from_stac``.
     """
-    cat = get_catalog()
+    cat = get_catalog(catalog_id)
     bbox4 = _validated_bbox(bbox)
-    target_collections, notes = _resolve_targets(collections, modality, bbox4)
+    target_collections = _resolve_targets(collections)
+    notes: list[str] = []
 
     capped_limit = max(1, min(int(limit), 50))
     kwargs = _query_kwargs(
         targets=target_collections,
+        bbox=bbox4,
         datetime_range=datetime_range,
         max_cloud_cover=max_cloud_cover,
         page_limit=min(capped_limit, 25),
         max_items=capped_limit,
-        notes=notes,
     )
 
     client = _open_client(cat['url'])
@@ -326,28 +227,22 @@ def search_scenes(
 def count_scenes(
     bbox: list[float],
     collections: list[str] | None = None,
-    modality: str | None = None,
     datetime_range: str | None = None,
     max_cloud_cover: float | None = None,
+    catalog_id: str | None = None,
 ) -> dict[str, Any]:
-    """Counts matching scenes per collection without transferring items.
-
-    Issues a `limit=1` STAC item search per collection and reads its
-    ``numberMatched`` context total - a cheap availability check before
-    running a full :func:`search_scenes`. The same property-aware guards
-    apply: cloud filtering only for all-optical targets, datetime skipped
-    for static mosaics, NAIP dropped outside CONUS.
-    """
-    cat = get_catalog()
+    """Counts matching scenes per collection without transferring items."""
+    cat = get_catalog(catalog_id)
     bbox4 = _validated_bbox(bbox)
-    targets, notes = _resolve_targets(collections, modality, bbox4)
+    targets = _resolve_targets(collections)
+    notes: list[str] = []
     base = _query_kwargs(
         targets=targets,
+        bbox=bbox4,
         datetime_range=datetime_range,
         max_cloud_cover=max_cloud_cover,
         page_limit=1,
         max_items=None,
-        notes=notes,
     )
     del base['sortby']  # irrelevant when no items are transferred
 
@@ -357,7 +252,7 @@ def count_scenes(
         try:
             matched = int(client.search(**{**base, 'collections': [cid]}).matched())
             counts[cid] = matched
-        except Exception:
+        except Exception:  # pragma: no cover - requires an upstream protocol failure
             counts[cid] = None
             notes.append(f'count unavailable for `{cid}` (no numberMatched reported).')
     available = [v for v in counts.values() if v is not None]
@@ -375,7 +270,7 @@ def count_scenes(
 def _summarize_item(item: dict[str, Any]) -> dict[str, Any]:
     """Compact scene summary safe to return to an LLM.
 
-    Beyond the common fields, modality-specific properties are surfaced:
+    Beyond the common fields, STAC extension properties are surfaced:
     SAR (`sar:polarizations`, `sar:instrument_mode`, `sat:orbit_state`),
     Sentinel-2 scene classification (`s2:water_percentage`, ...), Landsat
     WRS tiling, NAIP state/year and storage flags.
@@ -385,6 +280,7 @@ def _summarize_item(item: dict[str, Any]) -> dict[str, Any]:
         'scene_id': item.get('id'),
         'collection': item.get('collection'),
         'datetime': props.get('datetime') or props.get('start_datetime'),
+        'end_datetime': props.get('end_datetime'),
         'platform': props.get('platform'),
         'cloud_cover': props.get('eo:cloud_cover'),
         'epsg': _item_epsg(item),
@@ -392,7 +288,7 @@ def _summarize_item(item: dict[str, Any]) -> dict[str, Any]:
         'bbox': item.get('bbox'),
         'asset_keys': sorted((item.get('assets') or {}).keys()),
     }
-    # Modality-specific extras (only present when the collection provides them).
+    # STAC extension properties (only present when the item provides them).
     extras = {
         'sar:polarizations': props.get('sar:polarizations'),
         'sar:instrument_mode': props.get('sar:instrument_mode'),
@@ -412,7 +308,7 @@ def _summarize_item(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _collect_bands(raw_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Collects ordered, de-duplicated eo:bands across items.
+    """Collects ordered, de-duplicated EO or raster bands across items.
 
     Band labels differ per Earth Search collection (`name` on Sentinel-2,
     `common_name` on Landsat); unlabeled bands fall back to the asset key so
@@ -421,7 +317,7 @@ def _collect_bands(raw_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     bands_by_name: dict[str, dict[str, Any]] = {}
     for item in raw_items:
         for asset_key, asset in (item.get('assets') or {}).items():
-            for band in asset.get('eo:bands') or []:
+            for band in asset.get('eo:bands') or asset.get('raster:bands') or []:
                 name = band.get('name') or band.get('common_name') or asset_key
                 existing = bands_by_name.get(name)
                 if existing is None or (
@@ -499,62 +395,52 @@ def _storage_info(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _item_epsg(item: dict[str, Any]) -> int | None:
-    """Native EPSG from either `proj:epsg` (int) or `proj:code` string."""
-    props = item.get('properties') or {}
-    epsg = props.get('proj:epsg')
-    if isinstance(epsg, int):
-        return epsg
-    code = props.get('proj:code')
-    if isinstance(code, str) and code.upper().startswith('EPSG:'):
-        try:
-            return int(code.split(':', 1)[1])
-        except ValueError:
-            return None
+    """Native EPSG from item properties or asset-level projection fields."""
+    candidates = [item.get('properties') or {}]
+    candidates.extend((item.get('assets') or {}).values())
+    for candidate in candidates:
+        epsg = candidate.get('proj:epsg')
+        if isinstance(epsg, int):
+            return epsg
+        code = candidate.get('proj:code')
+        if isinstance(code, str) and code.upper().startswith('EPSG:'):
+            try:
+                return int(code.split(':', 1)[1])
+            except ValueError:
+                continue
     return None
 
 
-def _s3_to_https(href: str, region: str | None) -> str | None:
-    """Translates `s3://bucket/key` hrefs to public https form.
+def _pick_asset_urls(
+    item: dict[str, Any], max_assets: int | None = None
+) -> list[tuple[str, str, str | None]]:
+    """Picks asset URLs as (asset_key, original_href, encoding_format).
 
-    Earth Search assets come in two shapes: sentinel-2-c1-l2a ships https
-    COG hrefs, while Sentinel-1, Landsat, Copernicus DEM and NAIP only
-    expose `s3://` hrefs. Without translation, `_pick_asset_urls` would
-    produce zero distributions for those collections.
+    Provider hrefs are preserved because their scheme can carry access
+    semantics; metadata assets are skipped in favor of data assets.
     """
-    if not href.startswith('s3://'):
-        return href
-    rest = href[len('s3://') :]
-    bucket, _, key = rest.partition('/')
-    if not key:
-        return None
-    host = f'{bucket}.s3.{region}.amazonaws.com' if region else f'{bucket}.s3.amazonaws.com'
-    return f'https://{host}/{key}'
-
-
-def _pick_asset_urls(item: dict[str, Any], max_assets: int) -> list[tuple[str, str, str | None]]:
-    """Picks asset URLs as (asset_key, https_href, encoding_format).
-
-    `s3://` hrefs are translated to their https equivalent using the
-    item's storage scheme region; metadata assets are skipped in favor
-    of actual data bands.
-    """
-    storage = _storage_info(item)
     picks: list[tuple[str, str, str | None]] = []
     assets = sorted((item.get('assets') or {}).items())
     # Data bands first, then anything else (metadata/thumbnail last resort).
     ranked = sorted(
         assets,
-        key=lambda kv: 0 if 'data' in (kv[1].get('roles') or []) else 1,
+        key=lambda kv: (
+            0
+            if kv[0] == 'cog_default'
+            else 1
+            if 'data' in (kv[1].get('roles') or [])
+            else 2
+        ),
     )
     for key, asset in ranked:
-        href = _s3_to_https(asset.get('href') or '', storage.get('region'))
-        if not href or not href.startswith(('http://', 'https://')):
+        href = asset.get('href')
+        if not isinstance(href, str) or not href:
             continue
         if 'metadata' in (asset.get('roles') or []):
             continue
         fmt = asset.get('type') or asset.get('media_type')
         picks.append((key, href, fmt))
-        if len(picks) >= max_assets:
+        if max_assets is not None and len(picks) >= max_assets:
             break
     return picks
 
@@ -567,10 +453,11 @@ def geocroissant_from_stac(
     creators: list[str] | None,
     raw_items: list[dict[str, Any]],
     record_set_name: str = 'scenes',
-    max_distribution_assets: int = 6,
+    max_distribution_assets: int | None = None,
     cite_as: str = '',
+    catalog_id: str | None = None,
 ) -> dict[str, Any]:
-    """Builds a GeoCroissant JSON-LD document from Earth Search results.
+    """Builds a GeoCroissant JSON-LD document from STAC results.
 
     The generated document includes schema.org coverage (bbox + temporal),
     GeoCroissant properties (CRS, record endpoint, band configuration and
@@ -607,9 +494,16 @@ def geocroissant_from_stac(
         if len(bbox) == 4:
             lons.extend([float(bbox[0]), float(bbox[2])])
             lats.extend([float(bbox[1]), float(bbox[3])])
-        dt = (item.get('properties') or {}).get('datetime')
-        if dt:
-            datetimes.append(str(dt))
+        props = item.get('properties') or {}
+        datetimes.extend(
+            str(value)
+            for value in (
+                props.get('datetime'),
+                props.get('start_datetime'),
+                props.get('end_datetime'),
+            )
+            if value
+        )
         epsg = _item_epsg(item)
         if isinstance(epsg, int):
             epsgs.add(epsg)
@@ -640,8 +534,8 @@ def geocroissant_from_stac(
     # Search results are EPSG:4326; native tile CRS recorded separately.
     doc['geocr:coordinateReferenceSystem'] = 'EPSG:4326'
     extra_properties: list[dict[str, Any]] = []
+    doc['geocr:recordEndpoint'] = get_catalog(catalog_id)['url']
     if epsgs:
-        doc['geocr:recordEndpoint'] = get_catalog()['url']
         extra_properties.append(
             {
                 '@type': 'PropertyValue',
@@ -692,12 +586,14 @@ def geocroissant_from_stac(
     if extra_properties:
         doc['additionalProperty'] = extra_properties
 
-    # --- Distribution (FileObjects for direct asset access) -----------
+    # --- Distribution (FileObjects preserving provider asset URIs) ----
     distribution: list[dict[str, Any]] = []
-    selected_items = raw_items[: max(1, max_distribution_assets // 2)]
-    for item in selected_items:
-        for key, href, fmt in _pick_asset_urls(item, max_assets=2):
-            if len(distribution) >= max_distribution_assets:
+    for item in raw_items:
+        for key, href, fmt in _pick_asset_urls(item):
+            if (
+                max_distribution_assets is not None
+                and len(distribution) >= max_distribution_assets
+            ):
                 break
             entry = {
                 '@type': 'cr:FileObject',
@@ -710,6 +606,8 @@ def geocroissant_from_stac(
             if isinstance(file_size, int):
                 entry['contentSize'] = str(file_size)
             distribution.append(entry)
+        if max_distribution_assets is not None and len(distribution) >= max_distribution_assets:
+            break
     if distribution:
         doc['distribution'] = distribution
 
@@ -722,6 +620,7 @@ def geocroissant_from_stac(
         ('cloud_cover', 'sc:Float'),
         ('epsg', 'sc:Integer'),
         ('image_url', 'sc:URL'),
+        ('asset_urls', 'sc:URL'),
     ]
     fields = []
     for fname, dtype in field_specs:
@@ -733,8 +632,10 @@ def geocroissant_from_stac(
                 'dataType': dtype,
             }
         )
+    fields[-1]['isArray'] = True
     if band_names:
-        fields[-1]['geocr:bandConfiguration'] = {
+        image_field = next(field for field in fields if field['@id'] == f'{rs}/image_url')
+        image_field['geocr:bandConfiguration'] = {
             '@type': 'geocr:BandConfiguration',
             'geocr:totalBands': len(band_names),
             'geocr:bandNamesList': band_names,
@@ -745,15 +646,18 @@ def geocroissant_from_stac(
         props = item.get('properties') or {}
         cloud = props.get('eo:cloud_cover')
         epsg = _item_epsg(item)
-        first_url = _pick_asset_urls(item, max_assets=1)
+        asset_urls = _pick_asset_urls(item)
         data_rows.append(
             {
                 f'{rs}/scene_id': str(item.get('id') or ''),
                 f'{rs}/collection': str(item.get('collection') or ''),
-                f'{rs}/datetime': str(props.get('datetime') or ''),
+                f'{rs}/datetime': str(
+                    props.get('datetime') or props.get('start_datetime') or ''
+                ),
                 f'{rs}/cloud_cover': float(cloud) if cloud is not None else '',
                 f'{rs}/epsg': int(epsg) if isinstance(epsg, int) else '',
-                f'{rs}/image_url': first_url[0][1] if first_url else '',
+                f'{rs}/image_url': asset_urls[0][1] if asset_urls else '',
+                f'{rs}/asset_urls': [url for _, url, _ in asset_urls],
             }
         )
 
@@ -762,7 +666,7 @@ def geocroissant_from_stac(
             '@type': 'cr:RecordSet',
             '@id': rs,
             'name': rs.replace('_', ' ').title(),
-            'description': 'Satellite scenes returned by the Earth Search STAC query.',
+            'description': 'Earth observation records returned by the selected STAC query.',
             'key': {'@id': f'{rs}/scene_id'},
             'field': fields,
             'data': data_rows,

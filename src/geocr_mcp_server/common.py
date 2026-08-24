@@ -1,9 +1,8 @@
 """Shared helpers for the GeoCroissant MCP server.
 
-All Croissant-specific logic in this module is delegated to the official
-``mlcroissant`` Python library (installed from the GeoCroissant fork of
-MLCommons ``croissant``). This server adds no re-implementation of the spec:
-it only parses, summarizes, and serializes objects produced by the library.
+The configured ``mlcroissant`` package parses and validates Croissant
+documents. This module resolves inputs and summarizes the resulting objects
+for MCP responses.
 """
 
 import datetime
@@ -308,7 +307,7 @@ def summarize_record_set(record_set: RecordSet) -> dict[str, Any]:
 
 
 def summarize_metadata(metadata: Metadata) -> dict[str, Any]:
-    """Builds a complete structured summary of a loaded Metadata node."""
+    """Builds a structured summary of a loaded Metadata node."""
 
     def _names(nodes: list[Any]) -> list[str]:
         names = []

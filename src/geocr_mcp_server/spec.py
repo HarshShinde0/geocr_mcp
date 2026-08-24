@@ -1,8 +1,7 @@
 """GeoCroissant JSON-LD scaffold generation.
 
-The vocabulary constants encoded here mirror the official GeoCroissant
-specification (`docs/croissant-geo-spec.md` in the croissant repository) and
-the produced documents are validated at runtime through ``mlcroissant``.
+The vocabulary constants follow `docs/croissant-geo-spec.md`. The tool layer
+validates generated documents with the configured ``mlcroissant`` package.
 """
 
 from typing import Any, Sequence
@@ -14,7 +13,7 @@ GEO_NAMESPACE = 'http://mlcommons.org/croissant/geo/'
 
 
 def official_context() -> dict[str, Any]:
-    """Returns the canonical Croissant @context extended with `geocr`."""
+    """Returns the Croissant @context used by the server, extended with `geocr`."""
     return {
         '@language': 'en',
         '@vocab': 'https://schema.org/',
@@ -93,8 +92,8 @@ def build_scaffold(
 ) -> dict[str, Any]:
     """Builds a GeoCroissant JSON-LD document from structured parameters.
 
-    The output follows the official specification sample (HLS Burn Scars) and
-    is validated afterwards by constructing an `mlcroissant.Dataset` on it.
+    The output follows the HLS Burn Scars example in the GeoCroissant
+    specification. The tool layer validates it after generation.
 
     Bounding boxes use the standard GIS order [min_lon, min_lat, max_lon,
     max_lat]; they are serialized into the schema.org GeoShape `box` ordering

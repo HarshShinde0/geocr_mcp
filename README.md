@@ -1,123 +1,181 @@
 # GeoCroissant MCP Server
 
-Model Context Protocol (MCP) server for [GeoCroissant](http://mlcommons.org/croissant/geo/1.0) and its geospatial extension.
+The GeoCroissant MCP Server gives Model Context Protocol (MCP) clients access
+to [GeoCroissant](http://mlcommons.org/croissant/geo/1.0), the geospatial
+extension of [MLCommons Croissant](https://mlcommons.org/croissant/).
 
-## Features
+Through Model Context Protocol (MCP), a client can explore Earth observation
+datasets in catalogs and create GeoCroissant ML-Ready Metadata from selected scenes,
+validate metadata, inspect dataset structure, and preview records with
+`mlcroissant`.
 
-- **EO dataset discovery** - keyword/topic search over STAC collections and
-  spatial scene search (bbox + datetime + cloud cover) against the live
-  **Element84 Earth Search API** (`https://earth-search.aws.element84.com/v1`,
-  AWS Open Data), with sensor-modality classification
-  (optical / radar / elevation) and theme shortcuts (`flood`, `wildfire`,
-  `ndvi`, `dem`, ...).
-- **STAC -> GeoCroissant generation** - turns live search results into a
-  validated GeoCroissant document: schema.org coverage, CRS, band
-  configuration & spectral metadata derived from `eo:bands` (converted from
-  micrometers to nanometers), distribution FileObjects for direct asset URLs,
-  and a RecordSet embedding one row per scene.
-- **Official validator as a tool** - structured pass/fail reports with errors
-  and warnings from `mlcroissant` (the same engine as `mlcroissant validate`).
-- **Deep inspection** - core metadata plus every GeoCroissant property: CRS,
-  spatial/temporal resolution, band configuration, spectral band metadata,
-  record endpoint, spatial index/bias/sampling strategy.
-- **Structure graph extraction** - exposes the directed multigraph the library
-  builds internally (Metadata / FileObject / FileSet / RecordSet / Field nodes;
-  source, join and containment edges).
-- **Record materialization** - executes the real operation graph (downloads,
-  extracts, transforms) to preview actual records, exactly like
-  `Dataset.records(...)` in Python.
-- **Validated scaffolding** - generates standards-conformant GeoCroissant
-  JSON-LD from structured parameters and checks it through the real validator.
-- **Built-in spec reference** - namespaces, all `geocr:` properties with
-  domains/cardinality, canonical `@context`, sample document and Python API.
+> [!NOTE]
+> The server provides current catalog and dataset information. The connected
+> MCP client uses this information to understand the request and choose a
+> suitable catalog and collection.
 
-## Tools
+## GeoCroissant workflow
 
-| Tool | Description |
-|------|-------------|
-| `list_eo_catalogs` | Registered EO STAC catalogs (Earth Search) with modalities, curated collections and topic keywords. |
-| `search_eo_datasets` | Topic/keyword search over Earth Search collections - `'flood'` -> Sentinel-1 + Sentinel-2, `'dem'` -> Copernicus DEM, etc. |
-| `search_eo_scenes` | Spatial/temporal/cloud-cover scene search in a bbox; returns per-scene ids, dates, cloud cover, native EPSG and asset keys. |
-| `create_geocroissant_from_stac` | End-to-end pipeline: live STAC search -> validated GeoCroissant JSON-LD (coverage, CRS, bands & spectral metadata, distribution URLs, inline scene records). Optionally writes to disk. |
-| `validate_croissant` | Validate a Croissant/GeoCroissant document (file path, URL or inline JSON). Returns `valid`, `errors`, `warnings`, conformance targets. |
-| `inspect_geocroissant` | Structured summary of a document: metadata, `geocr:` properties, distribution entries and every RecordSet/Field with types, shapes and source chains. |
-| `get_structure_graph` | Nodes and directed edges of the library's internal structure graph - lineage and dependency analysis. |
-| `list_record_sets` | RecordSets with @ids, keys, inline record/example counts and nested field summaries. |
-| `get_records_preview` | Materialize the first N records of a RecordSet, optionally filtered. Executes downloads/transforms like the Python API. |
-| `extract_distribution_urls` | Downloadable URLs from the distribution: `contentUrl`, formats, md5/sha256, FileSet includes. |
-| `create_geocroissant_scaffold` | Generate a validated GeoCroissant document from parameters (no network needed). Optionally writes to disk. |
-| `get_geocroissant_spec_reference` | Specification reference: `overview`, `context`, `properties`, `example`, `python-api` or `all`. |
+A client can create and explore a GeoCroissant dataset in one workflow:
 
-## Adding a catalog
+1. List the registered STAC catalogs.
+2. Search their current collections and review the most relevant results.
+3. Resolve a place to an EPSG:4326 bounding box when coordinates are not
+   already available.
+4. Count matching scenes before requesting records.
+5. Generate GeoCroissant JSON-LD for the chosen collections, area, dates, and
+  optional cloud-cover limit.
+6. Validate or inspect the resulting metadata and preview its records.
 
-The registry is **data-driven** (`src/geocr_mcp_server/config/catalogs.yaml`):
-each catalog is an entry with its STAC URL, curated collections per modality,
-plus shared `topics` and modality keyword hints. To register another catalog
-without touching code:
-
-1. Copy the YAML somewhere and append your catalog under `catalogs`
-   (and any theme mappings under `topics`).
-2. Point the environment variable at it:
-
-```json
-"env": { "GEOCR_CATALOGS_CONFIG": "/path/to/catalogs.yaml" }
+```text
+user request
+  -> select a catalog from list_eo_catalogs
+  -> find collections with search_eo_datasets
+  -> inspect candidates with get_eo_dataset_details
+  -> resolve a place with geocode_place, when needed
+  -> verify availability with count_eo_scenes
+  -> generate one source with create_geocroissant_from_stac
+     or multiple sources with create_geocroissant_from_stac_sources
+  -> use json_ld and asset_urls in the client
 ```
 
-The loader validates that topic references exist in some catalog's collection
-lists, so typos fail fast at startup.
-
-## Recommended agent workflow
-
-```
-discovery:  list_eo_catalogs -> search_eo_datasets("burn scar", modality=optical)
-            -> search_eo_scenes(bbox=[...], datetime_range=...)
-metadata:   create_geocroissant_from_stac(...)  # validated output + optional file
-consuming:  inspect_geocroissant -> get_records_preview -> extract_distribution_urls
-authoring:  create_geocroissant_scaffold -> edit -> validate_croissant
-```
+The result describes the dataset's location, time range, coordinate reference
+system, raster bands, and available spectral properties. Each selected STAC
+scene becomes an inline record connected to its source assets.
 
 > [!TIP]
-> **Remote Client / Cloud Usage**: When connected to a remote hosted server (e.g. on Render), the generated GeoCroissant document is returned directly inline under `json_ld` in the tool response. Remote agents / IDE clients should write `json_ld` straight to their local workspace rather than attempting to read `path` from the remote container.
+> **Remote clients:** Generation returns the complete document in `json_ld`.
+> A returned `path` refers to the server's filesystem, so a remote client
+> should use `json_ld` when it needs to store the document locally.
 
+## MCP tools
+
+| Tool | Purpose |
+|------|---------|
+| `ping` | Return `pong` to confirm that the MCP server is available. |
+| `create_geocroissant_from_stac` | Create GeoCroissant JSON-LD from a STAC search and return the selected source asset URIs. |
+| `create_geocroissant_from_stac_sources` | Compose independent searches from any registered catalogs into source-specific RecordSets. |
+| `create_geocroissant_scaffold` | Create a GeoCroissant starting point from dataset details and return its validation result. |
+| `validate_croissant` | Check a document and return validation errors, warnings, and conformance information. |
+| `inspect_geocroissant` | Summarize the dataset, geospatial properties, distributions, RecordSets, and Fields. |
+| `get_structure_graph` | Show the nodes and relationships in the metadata graph. |
+| `list_record_sets` | List RecordSets and their keys, records, examples, and Fields. |
+| `get_records_preview` | Read a small, optionally filtered sample from a RecordSet. |
+| `extract_distribution_urls` | List distribution URIs, media types, checksums, archive links, and FileSet patterns. |
+| `get_geocroissant_spec_reference` | Read the GeoCroissant overview, context, properties, example, or Python API reference. |
+| `list_eo_catalogs` | List the STAC services in the active YAML configuration. |
+| `search_eo_datasets` | Browse collections from a selected STAC service. |
+| `get_eo_dataset_details` | Read the provider's details for one collection. |
+| `geocode_place` | Find candidate EPSG:4326 bounding boxes for a place name. |
+| `count_eo_scenes` | Count scenes for the chosen collections, area, dates, and optional cloud-cover limit. |
+| `search_eo_scenes` | Find STAC scenes that match the selected collections and search options. |
+
+## Source assets
+
+The generated metadata keeps each selected asset URI in the format published
+by its STAC provider, including `s3://`, `https://`, and other supported URI
+schemes. Clients can then access each source using the connection method and
+credentials provided for that service.
+
+## Multiple sources
+
+`create_geocroissant_from_stac_sources` accepts an arbitrary list of explicit
+STAC searches. Each source requires `catalog_id`, `collection_id`, and an
+EPSG:4326 `bbox`; it can also set `source_id`, `datetime_range`,
+`max_cloud_cover`, and `limit`. Catalog IDs must exist in the active YAML
+registry. Sources may use different catalogs or repeat one catalog with
+different collections.
+
+```json
+{
+  "name": "Combined observations",
+  "sources": [
+    {
+      "source_id": "source_a",
+      "catalog_id": "catalog-a",
+      "collection_id": "collection-a",
+      "bbox": [-53, -31, -50, -28],
+      "datetime_range": "2026-08-01/2026-08-25",
+      "limit": 10
+    },
+    {
+      "source_id": "source_b",
+      "catalog_id": "catalog-b",
+      "collection_id": "collection-b",
+      "bbox": [-53, -31, -50, -28],
+      "limit": 10
+    }
+  ]
+}
+```
+
+The result contains one RecordSet per source, source and catalog provenance,
+provider-native asset URIs, and per-source search results. It records the
+selected observations without claiming that sources are spatially,
+temporally, spectrally, or tensor aligned. Downstream code must apply the
+dataset-specific access, alignment, and preprocessing required for its model.
+
+## Catalog registry
+
+The bundled registry is
+`src/geocr_mcp_server/config/catalogs.yaml`. It currently defines:
+
+- `earth-search`: Element84 Earth Search, the default catalog.
+- `veda`: NASA Visualization, Exploration, and Data Analysis (VEDA).
+
+Each entry contains an identifier, display name, STAC endpoint, description,
+and a collection snapshot. Searches use the provider's current catalog, so
+new collections can appear before the snapshot is updated. When `catalog_id`
+is omitted, `default_catalog` selects the service.
+
+To use another registry, copy the YAML file, add the required catalog entries,
+and set its absolute path in the server environment:
+
+```json
+{
+  "env": {
+    "GEOCR_CATALOGS_CONFIG": "/path/to/catalogs.yaml"
+  }
+}
+```
+
+No Python change is required. The server checks the configuration when it
+loads the registry.
 
 ## Installation
 
-No clone needed - pip/uvx fetch both `geocr-mcp` and its `mlcroissant` dependency straight from GitHub. Cloning is only required for development.
-
-### pip
-
-```bash
-pip install git+https://github.com/HarshShinde0/geocr_mcp.git@main
-```
-
-The single dependency `mlcroissant` is pulled automatically from the GeoCroissant fork:
-
-```bash
-pip install git+https://github.com/HarshShinde0/croissant.git@main#subdirectory=python/mlcroissant
-```
-
-### uv / uvx (recommended for clients)
+Python 3.10 or newer is required. For an MCP client, `uvx` can install and run
+the server without a manual checkout:
 
 ```bash
 uvx --from "geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main" geocr-mcp-server
 ```
 
+To install the command in the active Python environment:
+
+```bash
+pip install git+https://github.com/HarshShinde0/geocr_mcp.git@main
+```
+
+The installation includes the GeoCroissant-enabled `mlcroissant` dependency.
+
 ### Docker
 
 ```bash
 docker build -t geocr-mcp-server .
-# stdio (local clients):
 docker run -i --rm geocr-mcp-server
-# hosted (HTTP transports):
-docker run -p 8000:8000 geocr-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000
+```
+
+For streamable HTTP:
+
+```bash
+docker run -p 8000:8000 geocr-mcp-server \
+  --transport streamable-http --host 0.0.0.0 --port 8000
 ```
 
 ## Client configuration
 
-No clone needed - clients install (and cache) both packages directly from GitHub via `uvx`.
-
-<details>
-<summary>Claude Desktop / Claude Code</summary>
+### Claude Desktop and Claude Code
 
 ```json
 {
@@ -125,22 +183,19 @@ No clone needed - clients install (and cache) both packages directly from GitHub
     "geocr": {
       "command": "uvx",
       "args": [
-        "--from", "geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main",
+        "--from",
+        "geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main",
         "geocr-mcp-server"
       ],
       "env": {
         "FASTMCP_LOG_LEVEL": "ERROR"
-      },
-      "disabled": false,
-      "autoApprove": []
+      }
     }
   }
 }
 ```
-</details>
 
-<details>
-<summary>VS Code / Cursor</summary>
+### VS Code and Cursor
 
 ```json
 {
@@ -149,7 +204,8 @@ No clone needed - clients install (and cache) both packages directly from GitHub
       "geocr": {
         "command": "uvx",
         "args": [
-          "--from", "geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main",
+          "--from",
+          "geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main",
           "geocr-mcp-server"
         ],
         "env": {
@@ -160,16 +216,10 @@ No clone needed - clients install (and cache) both packages directly from GitHub
   }
 }
 ```
-</details>
 
-<details>
-<summary>Running from a local clone (development)</summary>
+### Local development checkout
 
-Only needed when iterating on the server code itself:
-
-```bash
-git clone https://github.com/HarshShinde0/geocr_mcp.git   # or this monorepo
-```
+Use the project directory when testing changes to the server itself:
 
 ```json
 {
@@ -177,42 +227,38 @@ git clone https://github.com/HarshShinde0/geocr_mcp.git   # or this monorepo
     "geocr": {
       "command": "uv",
       "args": [
-        "--directory", "/path/to/geocr_mcp",
-        "run", "geocr-mcp-server"
+        "--directory",
+        "/path/to/geocr_mcp",
+        "run",
+        "geocr-mcp-server"
       ],
       "env": {
         "FASTMCP_LOG_LEVEL": "ERROR"
-      },
-      "disabled": false,
-      "autoApprove": []
+      }
     }
   }
 }
 ```
-</details>
 
-<details>
-<summary>Hosted deployment (Render / Cloud / HTTP / SSE)</summary>
+## Hosted server
 
-Run the same server with an HTTP transport for shared/remote cloud usage:
+Start a shared endpoint with the streamable HTTP transport:
 
 ```bash
-geocr-mcp-server --transport streamable-http --host 0.0.0.0 --port $PORT
+geocr-mcp-server \
+  --transport streamable-http \
+  --host 0.0.0.0 \
+  --port "$PORT"
 ```
 
-#### Deploy on Render (1-Click Blueprint)
+The included `render.yaml` deploys the same command on Render. The current
+hosted endpoint is:
 
-This repository includes a `render.yaml` blueprint:
+```text
+https://geocr-mcp-server.onrender.com/mcp
+```
 
-1. Log in to [Render Dashboard](https://dashboard.render.com).
-2. Click **New +** -> **Blueprint** and connect repository `HarshShinde0/geocr_mcp`.
-3. Click **Apply**. Render will automatically build the container and deploy the server.
-
-Live endpoint: `https://geocr-mcp-server.onrender.com/mcp`
-
-#### Connecting Clients to Hosted MCP
-
-In your AI client, IDE, or agent configuration (`mcpServers`):
+Connect an MCP client to it with:
 
 ```json
 {
@@ -224,33 +270,47 @@ In your AI client, IDE, or agent configuration (`mcpServers`):
 }
 ```
 
-Behind a custom reverse proxy, terminate TLS at the proxy and set `GEOCR_HOST=0.0.0.0` and `GEOCR_TRANSPORT=streamable-http`.
-</details>
+> [!NOTE]
+> When a reverse proxy provides TLS, bind the server with
+> `GEOCR_HOST=0.0.0.0` and set `GEOCR_TRANSPORT=streamable-http`.
 
 ## Environment variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `FASTMCP_LOG_LEVEL` | `WARNING` | Log level for stderr logging (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
-| `GEOCR_OUTPUT_DIR` | system temp dir | Directory where generated files are written (filenames are sanitized to basenames). |
-| `GEOCR_CATALOGS_CONFIG` | shipped YAML | Path to an alternate catalog registry file - add catalogs/topics without code changes. |
-| `GEOCR_HOST` / `GEOCR_PORT` | `127.0.0.1` / `8000` | Bind address for SSE/streamable-http transports (also settable via CLI flags). |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `FASTMCP_LOG_LEVEL` | `WARNING` | Set stderr logging to `DEBUG`, `INFO`, `WARNING`, or `ERROR`. |
+| `GEOCR_OUTPUT_DIR` | System temporary directory | Choose where generated files are written. Supplied filenames are reduced to their basename. |
+| `GEOCR_CATALOGS_CONFIG` | Bundled YAML registry | Load catalog definitions from another YAML file. |
+| `GEOCR_HOST` | `127.0.0.1` locally; `0.0.0.0` in cloud environments | Set the bind address for SSE or streamable HTTP. |
+| `GEOCR_PORT` | `8000` | Set the port for SSE or streamable HTTP. |
+| `GEOCR_TRANSPORT` | `stdio` locally; `streamable-http` in cloud environments | Select the MCP transport. |
 
-## Security considerations
+## Network and file handling
 
-- The server performs **network requests only when a tool input references a URL**
-  or when materializing records from remote distributions (`get_records_preview`).
-  Keep `limit` small in untrusted contexts.
-- Generated files are always written inside `GEOCR_OUTPUT_DIR`; path traversal is
-  blocked by reducing filenames to their basename.
-- Run containers as non-root (the provided Dockerfile already does).
+- Catalog searches, scene requests, geocoding, URL inputs, and remote record
+  previews connect to their configured services.
+- Scene and preview limits help keep requests manageable for large datasets.
+- Generated files are written inside `GEOCR_OUTPUT_DIR`, and output names are
+  reduced to their basename.
+- The provided container runs as a non-root user by default.
 
 ## Development
 
+From the `geocr_mcp` directory:
+
 ```bash
-cd geocr_mcp
-uv venv && uv sync --all-groups     # or: python -m pip install -e ".[dev]"
-uv run pytest --cov --cov-branch    # unit tests (no network required)
-uv run ruff check src tests         # lint (same rules as awslabs/mcp)
-npx @modelcontextprotocol/inspector geocr-mcp-server   # interactive debugging
+uv venv
+uv sync --all-groups
+uv run ruff check src tests
+uv run python -m pytest --cov --cov-branch
+uv run python -m pytest -o addopts='' -m live
+```
+
+The default test run covers local behavior and the MCP protocol. The live test
+group connects to Earth Search, NASA VEDA, and Nominatim.
+
+For interactive protocol inspection:
+
+```bash
+npx @modelcontextprotocol/inspector geocr-mcp-server
 ```

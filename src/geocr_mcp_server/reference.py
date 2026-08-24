@@ -30,7 +30,7 @@ Earth-observation (EO) datasets.
 ## Core structure
 A Croissant document describes:
 - **Metadata** - name, description, license, creators, version...
-- **distribution** - `cr:FileObject` (one downloadable file: contentUrl plus
+- **distribution** - `cr:FileObject` (one source file: contentUrl plus
   md5/sha256 checksums) or `cr:FileSet` (files matching glob patterns inside a
   container archive).
 - **recordSet** - collections of records; each declares **cr:Field** columns
@@ -39,11 +39,11 @@ A Croissant document describes:
   format...). Fields can reference other fields (`references`) to express joins.
 
 ## Recommended tool workflow
-1. `create_geocroissant_scaffold` - generate a valid starting document.
+1. `create_geocroissant_scaffold` - generate a starting document.
 2. Edit the returned JSON-LD for domain specifics.
-3. `validate_croissant` - re-check with the official mlcroissant validator.
+3. `validate_croissant` - check the edited metadata.
 4. `inspect_geocroissant` / `get_structure_graph` - review the result.
-5. `get_records_preview` - materialize actual records from the data.
+5. `get_records_preview` - preview records from the selected RecordSet.
 """
 
 _PROPERTIES = """# GeoCroissant Properties Reference
@@ -95,16 +95,15 @@ Note the lat-first ordering inside the GeoShape box per specification.
 def _context_doc() -> str:
     context = json.dumps(official_context(), indent=2)
     return (
-        '# Canonical @context\n\n'
-        'Use this context in GeoCroissant documents (standard Croissant context '
+        '# Server @context\n\n'
+        'The server uses this Croissant context '
         'extended with the `geocr` prefix):\n\n```json\n' + context + '\n```\n'
     )
 
 
-_EXAMPLE = """# Full Sample Document
+_EXAMPLE = """# Condensed Sample Document
 
-Official GeoCroissant sample structure (HLS Burn Scars, condensed from
-docs/croissant-geo-spec.md):
+HLS Burn Scars structure adapted from docs/croissant-geo-spec.md:
 
 ```json
 {
@@ -161,7 +160,7 @@ docs/croissant-geo-spec.md):
 }
 ```
 
-Tip: generate a complete document (including @context) with
+Generate a document including @context with
 `create_geocroissant_scaffold`.
 """
 
@@ -209,7 +208,7 @@ for u, v in graph.edges:
 json_ld = md.to_json()         # serialize metadata back to JSON-LD
 ```
 
-## GeoCroistant node classes
+## GeoCroissant node classes
 ```python
 from mlcroissant import (
     BandConfiguration, SpectralBand, QuantitativeValue,

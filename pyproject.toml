@@ -11,6 +11,7 @@ dependencies = [
     "pydantic>=2.10.6",
     "pystac-client>=0.8.0",
     "pyyaml>=6.0.0",
+    "httpx>=0.28.0",
 ]
 authors = [
     { name = 'GeoCroissant MCP Contributors' },
@@ -19,6 +20,9 @@ classifiers = [
     'Operating System :: OS Independent',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
 ]
 keywords = [
     'mcp',
@@ -49,8 +53,8 @@ dev = [
     'pyright>=1.1.398',
     'pytest>=8.0.0',
     'pytest-cov>=4.1.0',
-    'pytest-mock>=3.12.0',
     'pytest-asyncio>=0.26.0',
+    'pystac>=1.10.0',
 ]
 
 [build-system]
@@ -123,16 +127,18 @@ update_changelog_on_bump = true
 exclude_dirs = ['.venv', 'venv', 'tests']
 
 [tool.pytest.ini_options]
+addopts = '-m "not live"'
 python_files = 'test_*.py'
 python_classes = 'Test*'
 python_functions = 'test_*'
 testpaths = ['tests']
 asyncio_mode = 'auto'
 markers = [
-    'live: marks tests that make live network calls (deselect with "-m \"not live\"")',
+    'live: real external-service contract tests (run explicitly with "-m live")',
 ]
 
 [tool.coverage.report]
+fail_under = 100
 exclude_also = [
     'pragma: no cover',
     'if __name__ == .__main__.:\n    main()',

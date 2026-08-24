@@ -1,61 +1,11 @@
 # STAC catalog registry for the geocr MCP server.
 #
-# This file is shipped as package data and loaded at import time by
-# ``geocr_mcp_server.catalogs``. Point the ``GEOCR_CATALOGS_CONFIG``
-# environment variable at a copy of this file to register your own catalogs,
-# modalities, keyword heuristics or topics without changing code.
-
-# Sensor modalities the server understands. Must cover every key used under a
-# catalog's ``common`` mapping and under ``modality_hints``.
-modalities:
-  - optical
-  - radar
-  - elevation
-
-# Default maximum cloud cover (%) applied to scene searches when the caller
-# does not pass one explicitly.
-default_cloud_cover: 20.0
-
-# Keyword heuristics used to classify a STAC collection by modality when the
-# catalog does not expose it explicitly. Order matters: the first modality with
-# a matching hint wins, so keep the most specific sensors (radar, elevation)
-# ahead of the broad optical bucket.
-modality_hints:
-  radar:
-    - sar
-    - sentinel-1
-    - -grd
-    - slc
-    - palsar
-    - uavsar
-    - nisar
-    - radarsat
-  elevation:
-    - dem
-    - elevation
-    - topograph
-    - altimetry
-    - icesat
-    - nasadem
-    - cop-dem
-    - arcticdem
-    - bathymetr
-  optical:
-    - sentinel-2
-    - landsat
-    - hls
-    - modis
-    - viirs
-    - surface-reflectance
-    - naip
-    - ortho
-    - aerial
-    - planet-scope
-    - skysat
-    - aster
-    - s2
-
+# This file is shipped as package data and loaded on first registry access by
+# ``geocr_mcp_server.catalogs``. Point ``GEOCR_CATALOGS_CONFIG`` at a copy of
+# this file to register catalogs and informational collection snapshots
+# without changing code.
 # Registered STAC catalogs, keyed by a short lowercase id.
+default_catalog: earth-search
 #
 # Collection ids below were audited against the live API on 2026-08-23:
 # GET https://earth-search.aws.element84.com/v1/collections returns exactly
@@ -70,53 +20,270 @@ catalogs:
       STAC API over AWS Open Data EO assets. Collections: sentinel-2-c1-l2a,
       sentinel-2-l2a, sentinel-2-l1c, sentinel-2-pre-c1-l2a, landsat-c2-l2,
       sentinel-1-grd, cop-dem-glo-30, cop-dem-glo-90, naip.
-    common:
-      optical:
-        - sentinel-2-c1-l2a
-        - sentinel-2-l2a
-        - sentinel-2-l1c
-        - landsat-c2-l2
-        - naip
-      radar:
-        - sentinel-1-grd
-      elevation:
-        - cop-dem-glo-30
-        - cop-dem-glo-90
+    collections:
+      - sentinel-2-c1-l2a
+      - sentinel-2-l2a
+      - sentinel-2-l1c
+      - sentinel-2-pre-c1-l2a
+      - landsat-c2-l2
+      - sentinel-1-grd
+      - cop-dem-glo-30
+      - cop-dem-glo-90
+      - naip
 
-# Theme -> collections mapping. Topics are matched as substrings of the
-# user's free-text query and take precedence over plain keyword search.
-# Every id listed here must exist on the target catalog.
-topics:
-  flood: ["sentinel-1-grd", "sentinel-2-c1-l2a"]
-  wildfire: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  fire: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  burn: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  vegetation: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  ndvi: ["sentinel-2-c1-l2a"]
-  evi: ["sentinel-2-c1-l2a"]
-  urban: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
-  water: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
-  forest: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  agriculture: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  crop: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  soil: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  snow: ["sentinel-2-c1-l2a", "landsat-c2-l2"]
-  coastal: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
-  sentinel: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
-  sentinel-2: ["sentinel-2-c1-l2a"]
-  sentinel-1: ["sentinel-1-grd"]
-  landsat: ["landsat-c2-l2"]
-  multimodal: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
-  fusion: ["sentinel-2-c1-l2a", "sentinel-1-grd"]
-  aerial: ["naip"]
-  elevation: ["cop-dem-glo-30", "cop-dem-glo-90"]
-  dem: ["cop-dem-glo-30", "cop-dem-glo-90"]
-  terrain: ["cop-dem-glo-30", "cop-dem-glo-90"]
-  topography: ["cop-dem-glo-30", "cop-dem-glo-90"]
-  optical: ["sentinel-2-c1-l2a", "sentinel-2-l2a", "landsat-c2-l2"]
-  radar: ["sentinel-1-grd"]
-  sar: ["sentinel-1-grd"]
-  thermal: ["landsat-c2-l2"]
-  classification: ["sentinel-2-c1-l2a"]
-  landcover: ["sentinel-2-c1-l2a"]
-  toa: ["sentinel-2-l1c"]
+  veda:
+    name: NASA VEDA
+    url: https://openveda.cloud/api/stac
+    description: >-
+      NASA Visualization, Exploration, and Data Analysis (VEDA) thematic
+      Earth science catalog. All live collections remain discoverable.
+    # Informational collection snapshot. Live discovery can find additions
+    # before this list is refreshed.
+    collections:
+      - bangladesh-landcover-2001-2020
+      - barc-thomasfire
+      - blizzard-alley
+      - blizzard-clipper
+      - blizzard-co-low
+      - blizzard-count
+      - blizzard-era5-10m-wind
+      - blizzard-era5-2m-temp
+      - blizzard-era5-cfrac
+      - blizzard-era5-mslp
+      - blizzard-goes-bombogenesis
+      - blizzard-merra2-10m-wind
+      - blizzard-merra2-2m-temp
+      - blizzard-merra2-cfrac
+      - blizzard-merra2-mslp
+      - blizzard-millera
+      - blizzard-millerb
+      - blizzard-noreaster
+      - blizzard-panhandle-hooker
+      - blizzard-snowfall
+      - blue-tarp-detection
+      - blue-tarp-planetscope
+      - burma-eq-night-lights
+      - burma-eq-planet-post
+      - burma-eq-planet-pre
+      - burma-eq-s2-deformation-ew
+      - burma-eq-s2-deformation-ns
+      - caldor-fire-behavior
+      - caldor-fire-burn-severity
+      - campfire-albedo-wsa-diff
+      - campfire-lst-day-diff
+      - campfire-lst-night-diff
+      - campfire-ndvi-diff
+      - campfire-nlcd
+      - climdex-tmaxxf-access-cm2-ssp126
+      - climdex-tmaxxf-access-cm2-ssp245
+      - climdex-tmaxxf-access-cm2-ssp370
+      - climdex-tmaxxf-access-cm2-ssp585
+      - CMIP245-winter-median-pr
+      - CMIP245-winter-median-ta
+      - CMIP585-winter-median-pr
+      - CMIP585-winter-median-ta
+      - co2-diff
+      - co2-mean
+      - combined_CMIP6_daily_GISS-E2-1-G_tas_kerchunk_DEMO
+      - conus-reach
+      - county_grasslands_pasture_2019-v1
+      - damage_probability_2022-10-03
+      - darnah-flood
+      - darnah-gpm-daily
+      - delta-disasters-hd-blackmarble-nightlights
+      - delta-disasters-planet-flood
+      - delta-disasters-planet-tornado
+      - derecho-planet-hartington
+      - derecho-planet-rockvalley
+      - disalexi-etsuppression
+      - dust_depo_chlorophyll
+      - ecco-surface-height-change
+      - eis_fire_perimeter
+      - EPA-annual-emissions_1A_Combustion_Mobile
+      - EPA-annual-emissions_1A_Combustion_Stationary
+      - EPA-annual-emissions_1B1a_Abandoned_Coal
+      - EPA-annual-emissions_1B1a_Coal_Mining_Surface
+      - EPA-annual-emissions_1B1a_Coal_Mining_Underground
+      - EPA-annual-emissions_1B2a_Petroleum
+      - EPA-annual-emissions_1B2b_Natural_Gas_Distribution
+      - EPA-annual-emissions_1B2b_Natural_Gas_Processing
+      - EPA-annual-emissions_1B2b_Natural_Gas_Production
+      - EPA-annual-emissions_1B2b_Natural_Gas_Transmission
+      - EPA-annual-emissions_2B5_Petrochemical_Production
+      - EPA-annual-emissions_2C2_Ferroalloy_Production
+      - EPA-annual-emissions_4A_Enteric_Fermentation
+      - EPA-annual-emissions_4B_Manure_Management
+      - EPA-annual-emissions_4C_Rice_Cultivation
+      - EPA-annual-emissions_4F_Field_Burning
+      - EPA-annual-emissions_5_Forest_Fires
+      - EPA-annual-emissions_6A_Landfills_Industrial
+      - EPA-annual-emissions_6A_Landfills_Municipal
+      - EPA-annual-emissions_6B_Wastewater_Treatment_Domestic
+      - EPA-annual-emissions_6B_Wastewater_Treatment_Industrial
+      - EPA-annual-emissions_6D_Composting
+      - EPA-daily-emissions_5_Forest_Fires
+      - EPA-monthly-emissions_1A_Combustion_Stationary
+      - EPA-monthly-emissions_1B2a_Petroleum
+      - EPA-monthly-emissions_1B2b_Natural_Gas_Production
+      - EPA-monthly-emissions_4B_Manure_Management
+      - EPA-monthly-emissions_4C_Rice_Cultivation
+      - EPA-monthly-emissions_4F_Field_Burning
+      - ercot-houston-nightlights-freeze
+      - ERCOT-MODIS
+      - facebook_population_density
+      - fldas-soil-moisture-anomalies
+      - frp-max-thomasfire
+      - GEDI_ISS_L3_Canopy_Height_Mean_RH100_201904-202303
+      - geoglam
+      - GPM_3IMERGDF
+      - grdi-cdr-raster
+      - grdi-filled-missing-values-count
+      - grdi-imr-raster
+      - grdi-shdi-raster
+      - grdi-v1-built
+      - grdi-v1-raster
+      - grdi-vnl-raster
+      - grdi-vnl-slope-raster
+      - greenville-nightlights-tornadoes-2024
+      - hls-bais2-v2
+      - hls-entropy-difference
+      - hls-l30-002-ej-reprocessed
+      - hls-ndvi
+      - hls-ndvi-difference
+      - hls-s30-002-ej-reprocessed
+      - hls-swir-falsecolor-composite
+      - houston-aod
+      - houston-aod-diff
+      - houston-landcover
+      - houston-lst-day
+      - houston-lst-diff
+      - houston-lst-night
+      - houston-ndvi
+      - houston-urbanization
+      - ida-ndvi
+      - ida-ndvi-difference
+      - ida-ndwi
+      - ida-ndwi-difference
+      - IS2SITMOGR4-cog
+      - JPL-o3 -hourly-v1
+      - la-fires-frp
+      - la-fires-gedi
+      - la-fires-HLS
+      - la-fires-hrrr-wind
+      - la-fires-maxar
+      - la-fires-parcels
+      - la-fires-planet
+      - la-fires-sea
+      - la-fires-slope
+      - lakeview-nightlights-tornadoes-2024
+      - landfill-emit
+      - landsat-c2l2-sr-antarctic-glaciers-pine-island
+      - landsat-c2l2-sr-antarctic-glaciers-thwaites
+      - landsat-c2l2-sr-lakes-aral-sea
+      - landsat-c2l2-sr-lakes-lake-balaton
+      - landsat-c2l2-sr-lakes-lake-biwa
+      - landsat-c2l2-sr-lakes-tonle-sap
+      - landsat-c2l2-sr-lakes-vanern
+      - landsat-nighttime-thermal
+      - landslides-hls-disturbance
+      - landslides-imerg
+      - landslides-inventory
+      - landslides-kd-impacted-structures
+      - landslides-nc-flood
+      - landslides-ndvi
+      - landslides-planet-during
+      - landslides-planet-post
+      - landslides-planet-pre
+      - landslides-risk-usgs
+      - lis-etsuppression
+      - lis-global-da-evap
+      - lis-global-da-gpp
+      - lis-global-da-gpp-trend
+      - lis-global-da-gws
+      - lis-global-da-qs
+      - lis-global-da-qsb
+      - lis-global-da-streamflow
+      - lis-global-da-swe
+      - lis-global-da-totalprecip
+      - lis-global-da-tws
+      - lis-global-da-tws-trend
+      - lis-tvegsuppression
+      - lis-tws-anomaly
+      - lis-tws-nonstationarity-index
+      - lis-tws-trend
+      - marsh-difference
+      - marsh-ida
+      - modis-annual-lai-2003-2020
+      - modis-derecho
+      - modis_mosaic-cyclone-beryl
+      - MODIS_Terra_L3_NDVI_16Day
+      - MO_NPP_npp_vgpm
+      - mtbs-burn-severity
+      - nceo_africa_2017
+      - ndvi-global-2022
+      - nightlights-derecho
+      - nightlights-hd-1band
+      - nightlights-hd-monthly
+      - nlcd-annual-conus
+      - nlcd-new-urbanization
+      - nldas2
+      - nldas3
+      - no2-monthly
+      - no2-monthly-diff
+      - oco2-geos-l3-daily
+      - OMI_trno2-COG
+      - OMSO2PCA-COG
+      - ps-barnsdall-tornadoes-2024
+      - ps-greenfield-post-tornadoes-2024
+      - ps-greenfield-pre-tornadoes-2024
+      - ps-lakeview-winchester-tornadoes-2024
+      - ps-portage-tornadoes-2024
+      - ps-tornadoes-2024-difference
+      - recovery-proxy-maps-covid-19
+      - slowdown-proxy-covid-19-changing-landscapes
+      - smap-L3-soil-moisture-AM-v1
+      - snow-projections-diff-245
+      - snow-projections-diff-585
+      - snow-projections-median-245
+      - snow-projections-median-585
+      - social-vulnerability-index-household
+      - social-vulnerability-index-household-nopop
+      - social-vulnerability-index-housing
+      - social-vulnerability-index-housing-nopop
+      - social-vulnerability-index-minority
+      - social-vulnerability-index-minority-nopop
+      - social-vulnerability-index-overall
+      - social-vulnerability-index-overall-nopop
+      - social-vulnerability-index-socioeconomic
+      - social-vulnerability-index-socioeconomic-nopop
+      - soil-texture
+      - sport-lis-vsm0_100cm-percentile
+      - sst-cyclone-beryl
+      - togo-agriculture-covid-19
+      - tornadoes-2024-dow-refl-greenfield
+      - tornadoes-2024-dow-refl-harlan
+      - tornadoes-2024-dow-rhohv-greenfield
+      - tornadoes-2024-dow-rhohv-harlan
+      - tornadoes-2024-dow-sw-greenfield
+      - tornadoes-2024-dow-sw-harlan
+      - tornadoes-2024-dow-vg-greenfield
+      - tornadoes-2024-dow-v-harlan
+      - tornadoes-2024-dow-vmax-greenfield
+      - tornadoes-2024-dow-zdr-greenfield
+      - tornadoes-2024-dow-zdr-harlan
+      - tornadoes-2024-paths
+      - tornadoes-2024-polygons
+      - Tornado_Hail_2011
+      - Tornado_Tracks_2011
+      - tornado-tracks-derecho
+      - Tornado_Wind_2011
+      - tx-flood-100-yr-recurrence
+      - tx-flood-10-yr-recurrence
+      - tx-flood-500-yr-recurrence
+      - tx-flood-imerg
+      - tx-flood-maxar
+      - tx-flood-maxar-pre
+      - usda_cattle_AFOs_2017-v1
+      - viirs_mosaic-cyclone-beryl
+      - windgusts-derecho
+      - wldas-derecho-sm

@@ -13,7 +13,7 @@ def _exclude_none(self: BaseModel, **kwargs: Any) -> dict[str, Any]:
 class ValidationReport(BaseModel):
     """Result of validating a Croissant/GeoCroissant document."""
 
-    valid: bool = Field(description='Whether the document passed validation.')
+    valid: bool = Field(description='Whether the document passed metadata validation.')
     source: str | None = Field(default=None, description='Where the document was loaded from.')
     dataset_name: str | None = Field(
         default=None,
@@ -61,8 +61,12 @@ class RecordsPreview(BaseModel):
     record_set: str = Field(description='The RecordSet @id records were read from.')
     columns: list[str] = Field(description='Column names found across the records.')
     rows: list[dict[str, Any]] = Field(description='The materialized records.')
-    num_records: int = Field(description='Number of records actually returned.')
-    truncated: bool = Field(description='True when more records exist beyond the requested limit.')
+    num_records: int = Field(description='Number of records returned.')
+    truncated: bool = Field(
+        description=(
+            'True when the preview reached the requested limit; additional records may exist.'
+        )
+    )
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """See base class."""
@@ -70,7 +74,7 @@ class RecordsPreview(BaseModel):
 
 
 class DistributionUrls(BaseModel):
-    """Downloadable URLs extracted from a dataset distribution."""
+    """Source asset URIs extracted from a dataset distribution."""
 
     urls: list[dict[str, Any]] = Field(
         description=(
@@ -78,7 +82,7 @@ class DistributionUrls(BaseModel):
             'encodingFormat and hashes when declared.'
         )
     )
-    count: int = Field(description='Number of distribution entries with URLs.')
+    count: int = Field(description='Number of returned distribution entries.')
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """See base class."""
@@ -88,7 +92,9 @@ class DistributionUrls(BaseModel):
 class ScaffoldResult(BaseModel):
     """Result of generating a GeoCroissant JSON-LD scaffold."""
 
-    valid: bool = Field(description='Whether the generated JSON-LD passes mlcroissant validation.')
+    valid: bool = Field(
+        description='Whether the generated JSON-LD passes mlcroissant metadata validation.'
+    )
     json_ld: dict[str, Any] = Field(description='The generated JSON-LD document.')
     errors: list[str] = Field(
         default_factory=list, description='Validation errors on the generated file.'

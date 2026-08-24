@@ -48,9 +48,6 @@ coverage.xml
 .ruff_cache/
 .pyright/
 
-# uv
-uv.lock
-
 # Generated data
 output/
 generated_datasets/

@@ -182,8 +182,8 @@ clients unchanged.
 Configuration references: [VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers),
 [Cursor](https://cursor.com/docs/context/mcp),
 [Antigravity](https://antigravity.google/docs/mcp),
-[Kiro](https://kiro.dev/docs/mcp/configuration/), and
-[Claude Code](https://code.claude.com/docs/en/mcp). Claude Desktop configures
+[Kiro](https://kiro.dev/docs/mcp/configuration/), [Claude Code](https://code.claude.com/docs/en/mcp), and
+[OpenCode](https://opencode.ai/docs/mcp/). Claude Desktop configures
 [remote custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
 through the Claude account.
 
@@ -475,6 +475,57 @@ For a local server, add a stdio entry to `claude_desktop_config.json`. Replace
   }
 }
 ```
+
+### OpenCode
+
+> [!TIP]
+> Use `opencode.json` in the project root (or `~/.config/opencode/opencode.json`
+> for global scope) with the top-level `mcp` key — not `mcpServers`. Hosted
+> servers require `type: "remote"` and `url`; local servers use
+> `type: "local"` with a `command` array and `environment`.
+
+#### Hosted server
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "geocr-mcp": {
+      "type": "remote",
+      "url": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+#### Local development checkout
+
+Replace `/absolute/path/to/croissant` with the path to this repository checkout.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "geocr-mcp-local": {
+      "type": "local",
+      "command": [
+        "uv",
+        "--directory",
+        "/absolute/path/to/croissant/geocr_mcp",
+        "run",
+        "geocr-mcp-server"
+      ],
+      "environment": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}
+```
+
+When `geocr_mcp` itself is the project root, point `--directory` at `.`.
+Config is loaded once at startup, so quit and restart OpenCode after saving;
+verify the connection with `/mcp` inside the session.
 
 ## Hosted server
 

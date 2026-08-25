@@ -183,7 +183,7 @@ Configuration references: [VS Code](https://code.visualstudio.com/docs/copilot/c
 [Cursor](https://cursor.com/docs/context/mcp),
 [Antigravity](https://antigravity.google/docs/mcp),
 [Kiro](https://kiro.dev/docs/mcp/configuration/), [Claude Code](https://code.claude.com/docs/en/mcp), and
-[OpenCode](https://opencode.ai/docs/mcp/). Claude Desktop configures
+[OpenCode](https://opencode.ai/docs/mcp-servers/). Claude Desktop configures
 [remote custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
 through the Claude account.
 
@@ -492,11 +492,16 @@ For a local server, add a stdio entry to `claude_desktop_config.json`. Replace
   "mcp": {
     "geocr-mcp": {
       "type": "remote",
-      "url": "https://geocr-mcp-server.onrender.com/mcp"
+      "url": "https://geocr-mcp-server.onrender.com/mcp",
+      "timeout": 60000
     }
   }
 }
 ```
+
+The `timeout` is optional but recommended for the hosted server: free-tier
+hosting can cold-start for tens of seconds, exceeding OpenCode's default
+5-second timeout.
 
 #### Local development checkout
 
@@ -525,7 +530,7 @@ Replace `/absolute/path/to/croissant` with the path to this repository checkout.
 
 When `geocr_mcp` itself is the project root, point `--directory` at `.`.
 Config is loaded once at startup, so quit and restart OpenCode after saving;
-verify the connection with `/mcp` inside the session.
+verify with `opencode mcp list` or by using a tool in a prompt.
 
 ## Hosted server
 

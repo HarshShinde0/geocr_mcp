@@ -175,16 +175,105 @@ docker run -p 8000:8000 geocr-mcp-server \
 
 ## Client configuration
 
-### Claude Desktop and Claude Code
+The clients below use different configuration filenames and remote-server keys.
+Use the example for your client rather than copying a configuration between
+clients unchanged.
+
+Configuration references: [VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers),
+[Cursor](https://cursor.com/docs/context/mcp),
+[Antigravity](https://antigravity.google/docs/mcp),
+[Kiro](https://kiro.dev/docs/mcp/configuration/), and
+[Claude Code](https://code.claude.com/docs/en/mcp). Claude Desktop configures
+[remote custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
+through the Claude account.
+
+### VS Code
+
+> [!TIP]
+> Use `.vscode/mcp.json` with the top-level `servers` key. Hosted servers use
+> `type: "http"`; local servers use `type: "stdio"` with `command` and `args`.
+
+#### Hosted server
+
+Add the hosted streamable HTTP server to `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "geocr-mcp": {
+      "type": "http",
+      "url": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  },
+  "inputs": []
+}
+```
+
+#### Local development checkout
+
+Use the local project directory and stdio transport when testing server changes.
+For this repository checkout, add the following to `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "geocr-mcp-local": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "${workspaceFolder}/geocr_mcp",
+        "run",
+        "geocr-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  },
+  "inputs": []
+}
+```
+
+When `geocr_mcp` itself is the workspace root, use `${workspaceFolder}` instead.
+Do not add the `--transport stdio` arguments: stdio is already the local default.
+
+Run **MCP: List Servers** from the Command Palette to inspect the connection and
+server output.
+
+### Cursor
+
+> [!TIP]
+> Use `.cursor/mcp.json` with the top-level `mcpServers` key. Hosted servers use
+> `url`; local servers use `type: "stdio"` with `command` and `args`.
+
+Add project-specific servers to `.cursor/mcp.json`, or use
+`~/.cursor/mcp.json` to make them available in every project.
+
+#### Hosted server
 
 ```json
 {
   "mcpServers": {
-    "geocr": {
-      "command": "uvx",
+    "geocr-mcp": {
+      "url": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+#### Local development checkout
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp-local": {
+      "type": "stdio",
+      "command": "uv",
       "args": [
-        "--from",
-        "geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main",
+        "--directory",
+        "${workspaceFolder}/geocr_mcp",
+        "run",
         "geocr-mcp-server"
       ],
       "env": {
@@ -195,40 +284,187 @@ docker run -p 8000:8000 geocr-mcp-server \
 }
 ```
 
-### VS Code and Cursor
+When `geocr_mcp` itself is the project root, use `${workspaceFolder}` instead.
+Check **Customize > MCP** for server status, or select **MCP Logs** in Cursor's
+Output panel.
+
+### Antigravity
+
+> [!TIP]
+> Use `.agents/mcp_config.json` with the top-level `mcpServers` key. Hosted
+> servers must use `serverUrl`, while local servers use `command` and `args`.
+
+Add project-specific servers to `.agents/mcp_config.json`, or use
+`~/.gemini/config/mcp_config.json` to make them available globally.
+
+#### Hosted server
+
+Antigravity requires `serverUrl` for remote servers; `url` and `httpUrl` are not
+supported.
 
 ```json
 {
-  "mcp": {
-    "servers": {
-      "geocr": {
-        "command": "uvx",
-        "args": [
-          "--from",
-          "geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main",
-          "geocr-mcp-server"
-        ],
-        "env": {
-          "FASTMCP_LOG_LEVEL": "ERROR"
-        }
+  "mcpServers": {
+    "geocr-mcp": {
+      "serverUrl": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+#### Local development checkout
+
+Replace `/absolute/path/to/croissant` with the path to this repository checkout.
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp-local": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/croissant/geocr_mcp",
+        "run",
+        "geocr-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
       }
     }
   }
 }
 ```
 
-### Local development checkout
+Open **MCP Servers > Manage MCP Servers** in the agent panel to reload the
+configuration and inspect connection status.
 
-Use the project directory when testing changes to the server itself:
+### Kiro
+
+> [!TIP]
+> Use `.kiro/settings/mcp.json` with the top-level `mcpServers` key. Hosted
+> servers use `url`; local servers use `command` and `args`.
+
+Add project-specific servers to `.kiro/settings/mcp.json`, or use
+`~/.kiro/settings/mcp.json` to make them available globally.
+
+#### Hosted server
 
 ```json
 {
   "mcpServers": {
-    "geocr": {
+    "geocr-mcp": {
+      "url": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+#### Local development checkout
+
+Replace `/absolute/path/to/croissant` with the path to this repository checkout.
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp-local": {
       "command": "uv",
       "args": [
         "--directory",
-        "/path/to/geocr_mcp",
+        "/absolute/path/to/croissant/geocr_mcp",
+        "run",
+        "geocr-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}
+```
+
+Kiro reloads the file when it is saved. Check the MCP servers tab in the Kiro
+panel; connection logs are available under **Kiro - MCP Logs** in Output.
+
+### Claude Code
+
+> [!TIP]
+> Use `.mcp.json` with the top-level `mcpServers` key. Hosted servers require
+> `type: "http"` and `url`; local servers use `type: "stdio"`.
+
+Add project-specific servers to `.mcp.json` in the project root.
+
+#### Hosted server
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp": {
+      "type": "http",
+      "url": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+The equivalent project-scoped command is:
+
+```bash
+claude mcp add --transport http --scope project \
+  geocr-mcp https://geocr-mcp-server.onrender.com/mcp
+```
+
+#### Local development checkout
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp-local": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "${CLAUDE_PROJECT_DIR:-.}/geocr_mcp",
+        "run",
+        "geocr-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}
+```
+
+When `geocr_mcp` itself is the project root, use
+`${CLAUDE_PROJECT_DIR:-.}` instead. Run `claude mcp get geocr-mcp` or use `/mcp`
+inside Claude Code to verify the connection. Project-scoped servers require
+approval when first loaded interactively.
+
+### Claude Desktop
+
+> [!TIP]
+> Add hosted servers through **Customize > Connectors**. Use
+> `claude_desktop_config.json` only for local stdio servers.
+
+For the hosted server, add the endpoint as a custom connector under
+**Customize > Connectors** in Claude; remote connectors are configured through
+the Claude account rather than `claude_desktop_config.json`:
+
+```text
+https://geocr-mcp-server.onrender.com/mcp
+```
+
+For a local server, add a stdio entry to `claude_desktop_config.json`. Replace
+`/absolute/path/to/croissant` with the path to this repository checkout:
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp-local": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/croissant/geocr_mcp",
         "run",
         "geocr-mcp-server"
       ],
@@ -258,17 +494,8 @@ hosted endpoint is:
 https://geocr-mcp-server.onrender.com/mcp
 ```
 
-Connect an MCP client to it with:
-
-```json
-{
-  "mcpServers": {
-    "geocr-remote": {
-      "url": "https://geocr-mcp-server.onrender.com/mcp"
-    }
-  }
-}
-```
+Use the client-specific hosted configuration above; remote-server keys are not
+portable between all clients.
 
 > [!NOTE]
 > When a reverse proxy provides TLS, bind the server with

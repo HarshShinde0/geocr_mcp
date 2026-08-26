@@ -279,6 +279,46 @@ class GeoCroissantTools:
         ] = '',
         license: Annotated[str, Field(description='License URL.')] = '',
         creators: Annotated[list[str] | None, Field(description='Creator names.')] = None,
+        spatial_bias: Annotated[
+            str,
+            Field(description='Description of spatial representativeness limitations (Responsible AI).'),
+        ] = '',
+        sampling_strategy: Annotated[
+            str,
+            Field(description='Description of how samples were selected or constructed (Responsible AI).'),
+        ] = '',
+        data_collection: Annotated[
+            str,
+            Field(description='Description of the data collection process (Responsible AI).'),
+        ] = '',
+        data_biases: Annotated[
+            list[str] | None,
+            Field(description='List of documented imbalances, skews, or historical biases (Responsible AI).'),
+        ] = None,
+        data_limitations: Annotated[
+            list[str] | None,
+            Field(description='List of known data generalization limits, quality issues, or non-recommended uses (Responsible AI).'),
+        ] = None,
+        data_use_cases: Annotated[
+            list[str] | None,
+            Field(description='Intended, recommended, or benchmark use cases (Responsible AI).'),
+        ] = None,
+        data_social_impact: Annotated[
+            str,
+            Field(description='Discussion of positive or negative social impact and risks (Responsible AI).'),
+        ] = '',
+        personal_sensitive_information: Annotated[
+            list[str] | None,
+            Field(description='Declarations regarding presence or absence of personal/sensitive information (PII).'),
+        ] = None,
+        has_synthetic_data: Annotated[
+            bool | None,
+            Field(description='Whether the dataset contains synthetic data (Responsible AI).'),
+        ] = None,
+        rai_properties: Annotated[
+            dict[str, Any] | None,
+            Field(description='Additional Croissant RAI attributes (e.g. data_collection, annotator_demographics, etc.).'),
+        ] = None,
         output_filename: Annotated[
             str,
             Field(
@@ -313,6 +353,16 @@ class GeoCroissantTools:
                 creators=creators or [],
                 raw_items=raw_items,
                 catalog_id=catalog_id,
+                spatial_bias=spatial_bias,
+                sampling_strategy=sampling_strategy,
+                data_collection=data_collection,
+                data_biases=data_biases,
+                data_limitations=data_limitations,
+                data_use_cases=data_use_cases,
+                data_social_impact=data_social_impact,
+                personal_sensitive_information=personal_sensitive_information,
+                has_synthetic_data=has_synthetic_data,
+                rai_properties=rai_properties,
             )
             validation = self._validate_sync(doc)
             path = None
@@ -364,6 +414,46 @@ class GeoCroissantTools:
         ] = '',
         license: Annotated[str, Field(description='License URL for the composed dataset.')] = '',
         creators: Annotated[list[str] | None, Field(description='Creator names.')] = None,
+        spatial_bias: Annotated[
+            str,
+            Field(description='Description of spatial representativeness limitations (Responsible AI).'),
+        ] = '',
+        sampling_strategy: Annotated[
+            str,
+            Field(description='Description of how samples were selected or constructed (Responsible AI).'),
+        ] = '',
+        data_collection: Annotated[
+            str,
+            Field(description='Description of the data collection process (Responsible AI).'),
+        ] = '',
+        data_biases: Annotated[
+            list[str] | None,
+            Field(description='List of documented imbalances, skews, or historical biases (Responsible AI).'),
+        ] = None,
+        data_limitations: Annotated[
+            list[str] | None,
+            Field(description='List of known data generalization limits, quality issues, or non-recommended uses (Responsible AI).'),
+        ] = None,
+        data_use_cases: Annotated[
+            list[str] | None,
+            Field(description='Intended, recommended, or benchmark use cases (Responsible AI).'),
+        ] = None,
+        data_social_impact: Annotated[
+            str,
+            Field(description='Discussion of positive or negative social impact and risks (Responsible AI).'),
+        ] = '',
+        personal_sensitive_information: Annotated[
+            list[str] | None,
+            Field(description='Declarations regarding presence or absence of personal/sensitive information (PII).'),
+        ] = None,
+        has_synthetic_data: Annotated[
+            bool | None,
+            Field(description='Whether the dataset contains synthetic data (Responsible AI).'),
+        ] = None,
+        rai_properties: Annotated[
+            dict[str, Any] | None,
+            Field(description='Additional Croissant RAI attributes (e.g. data_collection, annotator_demographics, etc.).'),
+        ] = None,
         output_filename: Annotated[
             str,
             Field(
@@ -388,6 +478,16 @@ class GeoCroissantTools:
                 license_url=license,
                 creators=creators or [],
                 source_results=source_results,
+                spatial_bias=spatial_bias,
+                sampling_strategy=sampling_strategy,
+                data_collection=data_collection,
+                data_biases=data_biases,
+                data_limitations=data_limitations,
+                data_use_cases=data_use_cases,
+                data_social_impact=data_social_impact,
+                personal_sensitive_information=personal_sensitive_information,
+                has_synthetic_data=has_synthetic_data,
+                rai_properties=rai_properties,
             )
             validation = self._validate_sync(document)
             path = None
@@ -955,6 +1055,42 @@ class GeoCroissantTools:
         cite_as: Annotated[
             str, Field(description='Citation (BibTeX or URL) for the dataset.')
         ] = '',
+        spatial_bias: Annotated[
+            str,
+            Field(description='Description of spatial representativeness limitations (Responsible AI).'),
+        ] = '',
+        sampling_strategy: Annotated[
+            str,
+            Field(description='Description of how samples were selected or constructed (Responsible AI).'),
+        ] = '',
+        data_biases: Annotated[
+            list[str] | None,
+            Field(description='List of documented imbalances, skews, or historical biases (Responsible AI).'),
+        ] = None,
+        data_limitations: Annotated[
+            list[str] | None,
+            Field(description='List of known data generalization limits, quality issues, or non-recommended uses (Responsible AI).'),
+        ] = None,
+        data_use_cases: Annotated[
+            list[str] | None,
+            Field(description='Intended, recommended, or benchmark use cases (Responsible AI).'),
+        ] = None,
+        data_social_impact: Annotated[
+            str,
+            Field(description='Discussion of positive or negative social impact and risks (Responsible AI).'),
+        ] = '',
+        personal_sensitive_information: Annotated[
+            list[str] | None,
+            Field(description='Declarations regarding presence or absence of personal/sensitive information (PII).'),
+        ] = None,
+        has_synthetic_data: Annotated[
+            bool | None,
+            Field(description='Whether the dataset contains synthetic data (Responsible AI).'),
+        ] = None,
+        rai_properties: Annotated[
+            dict[str, Any] | None,
+            Field(description='Additional Croissant RAI attributes (e.g. data_collection, annotator_demographics, etc.).'),
+        ] = None,
         output_filename: Annotated[
             str,
             Field(
@@ -1006,6 +1142,15 @@ class GeoCroissantTools:
                 field_is_array=field_is_array,
                 field_array_shape=field_array_shape,
                 source_file_set_id=source_file_set_id,
+                spatial_bias=spatial_bias,
+                sampling_strategy=sampling_strategy,
+                data_biases=data_biases,
+                data_limitations=data_limitations,
+                data_use_cases=data_use_cases,
+                data_social_impact=data_social_impact,
+                personal_sensitive_information=personal_sensitive_information,
+                has_synthetic_data=has_synthetic_data,
+                rai_properties=rai_properties,
             )
         except ValueError as e:
             logger.warning(f'Invalid scaffold parameters: {e}')
@@ -1050,7 +1195,8 @@ class GeoCroissantTools:
                 description=(
                     'Which part of the specification to return. One of: "overview", '
                     '"context" (@context snippet), "properties" (all geocr '
-                    'properties), "example" (sample document), '
+                    'properties), "rai" (Responsible AI properties catalog), '
+                    '"example" (sample document), '
                     '"python-api" (mlcroissant usage snippets), "all" (all topics).'
                 )
             ),

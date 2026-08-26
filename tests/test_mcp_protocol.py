@@ -22,6 +22,16 @@ async def test_protocol_lists_public_tools_and_input_schemas():
         'description',
         'license',
         'creators',
+        'spatial_bias',
+        'sampling_strategy',
+        'data_collection',
+        'data_biases',
+        'data_limitations',
+        'data_use_cases',
+        'data_social_impact',
+        'personal_sensitive_information',
+        'has_synthetic_data',
+        'rai_properties',
         'output_filename',
     }
 

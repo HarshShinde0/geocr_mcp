@@ -22,6 +22,7 @@ from geocr_mcp_server import catalogs
 from geocr_mcp_server.spec import (
     CROISSANT_CONFORMANCE,
     GEO_CONFORMANCE,
+    RAI_CONFORMANCE,
     official_context,
 )
 from typing import Any
@@ -456,6 +457,17 @@ def geocroissant_from_stac(
     max_distribution_assets: int | None = None,
     cite_as: str = '',
     catalog_id: str | None = None,
+    # --- Responsible AI (GeoCroissant & Croissant RAI) ---
+    spatial_bias: str = '',
+    sampling_strategy: str = '',
+    data_collection: str = '',
+    data_biases: list[str] | None = None,
+    data_limitations: list[str] | None = None,
+    data_use_cases: list[str] | None = None,
+    data_social_impact: str = '',
+    personal_sensitive_information: list[str] | None = None,
+    has_synthetic_data: bool | None = None,
+    rai_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Builds a GeoCroissant JSON-LD document from STAC results.
 
@@ -585,6 +597,55 @@ def geocroissant_from_stac(
         )
     if extra_properties:
         doc['additionalProperty'] = extra_properties
+
+    # --- Responsible AI (Croissant & GeoCroissant RAI) ----------------
+    has_rai = False
+
+    if spatial_bias:
+        doc['geocr:spatialBias'] = spatial_bias
+        has_rai = True
+
+    if sampling_strategy:
+        doc['geocr:samplingStrategy'] = sampling_strategy
+        has_rai = True
+
+    if data_collection:
+        doc['rai:dataCollection'] = data_collection
+        has_rai = True
+
+    if personal_sensitive_information is not None:
+        doc['rai:personalSensitiveInformation'] = personal_sensitive_information
+        has_rai = True
+
+    if data_limitations is not None:
+        doc['rai:dataLimitations'] = data_limitations
+        has_rai = True
+
+    if data_biases is not None:
+        doc['rai:dataBiases'] = data_biases
+        has_rai = True
+
+    if data_use_cases is not None:
+        doc['rai:dataUseCases'] = data_use_cases
+        has_rai = True
+
+    if data_social_impact:
+        doc['rai:dataSocialImpact'] = data_social_impact
+        has_rai = True
+
+    if has_synthetic_data is not None:
+        doc['rai:hasSyntheticData'] = has_synthetic_data
+        has_rai = True
+
+    if rai_properties:
+        for k, val in rai_properties.items():
+            if val is not None:
+                key = k if (':' in k or k.startswith('@')) else f'rai:{k}'
+                doc[key] = val
+                has_rai = True
+
+    if has_rai and RAI_CONFORMANCE not in doc['conformsTo']:
+        doc['conformsTo'].append(RAI_CONFORMANCE)
 
     # --- Distribution (FileObjects preserving provider asset URIs) ----
     distribution: list[dict[str, Any]] = []

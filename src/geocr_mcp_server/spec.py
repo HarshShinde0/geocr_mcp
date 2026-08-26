@@ -10,16 +10,20 @@ from typing import Any, Sequence
 CROISSANT_CONFORMANCE = 'http://mlcommons.org/croissant/1.1'
 GEO_CONFORMANCE = 'http://mlcommons.org/croissant/geo/1.0'
 GEO_NAMESPACE = 'http://mlcommons.org/croissant/geo/'
+RAI_CONFORMANCE = 'http://mlcommons.org/croissant/RAI/1.0'
+RAI_NAMESPACE = 'http://mlcommons.org/croissant/RAI/'
 
 
 def official_context() -> dict[str, Any]:
-    """Returns the Croissant @context used by the server, extended with `geocr`."""
+    """Returns the Croissant @context used by the server, extended with `geocr` and `rai`."""
     return {
         '@language': 'en',
         '@vocab': 'https://schema.org/',
         'cr': 'http://mlcommons.org/croissant/',
         'dct': 'http://purl.org/dc/terms/',
         'geocr': GEO_NAMESPACE,
+        'rai': RAI_NAMESPACE,
+        'prov': 'http://www.w3.org/ns/prov#',
         'sc': 'https://schema.org/',
         'citeAs': 'cr:citeAs',
         'column': 'cr:column',
@@ -89,6 +93,31 @@ def build_scaffold(
     field_array_shape: str | None = None,
     source_file_set_id: str | None = None,
     cite_as: str = '',
+    # --- Responsible AI (GeoCroissant & Croissant RAI) ---
+    spatial_bias: str = '',
+    sampling_strategy: str = '',
+    data_collection: str = '',
+    data_collection_type: list[str] | None = None,
+    data_collection_missing_data: str = '',
+    data_collection_raw_data: str = '',
+    data_collection_timeframe: list[str] | None = None,
+    data_imputation_protocol: str = '',
+    data_preprocessing_protocol: list[str] | None = None,
+    data_manipulation_protocol: str = '',
+    data_annotation_protocol: list[str] | None = None,
+    data_annotation_platform: list[str] | None = None,
+    data_annotation_analysis: list[str] | None = None,
+    annotations_per_item: str = '',
+    annotator_demographics: list[str] | None = None,
+    machine_annotation_tools: list[str] | None = None,
+    data_biases: list[str] | None = None,
+    data_limitations: list[str] | None = None,
+    data_use_cases: list[str] | None = None,
+    data_social_impact: str = '',
+    personal_sensitive_information: list[str] | None = None,
+    data_release_maintenance_plan: str = '',
+    has_synthetic_data: bool | None = None,
+    rai_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Builds a GeoCroissant JSON-LD document from structured parameters.
 
@@ -154,6 +183,55 @@ def build_scaffold(
         doc['geocr:bandConfiguration'] = _band_configuration(band_names)
     if spectral_bands:
         doc['geocr:spectralBandMetadata'] = [_spectral_band(band) for band in spectral_bands]
+
+    # --- Responsible AI (GeoCroissant & Croissant RAI) ---
+    has_rai = False
+    if spatial_bias:
+        doc['geocr:spatialBias'] = spatial_bias
+        has_rai = True
+    if sampling_strategy:
+        doc['geocr:samplingStrategy'] = sampling_strategy
+        has_rai = True
+    if has_synthetic_data is not None:
+        doc['rai:hasSyntheticData'] = has_synthetic_data
+        has_rai = True
+
+    rai_fields_map = [
+        ('rai:dataCollection', data_collection),
+        ('rai:dataCollectionType', data_collection_type),
+        ('rai:dataCollectionMissingData', data_collection_missing_data),
+        ('rai:dataCollectionRawData', data_collection_raw_data),
+        ('rai:dataCollectionTimeFrame', data_collection_timeframe),
+        ('rai:dataImputationProtocol', data_imputation_protocol),
+        ('rai:dataPreprocessingProtocol', data_preprocessing_protocol),
+        ('rai:dataDataManipulationProtocol', data_manipulation_protocol),
+        ('rai:dataAnnotationProtocol', data_annotation_protocol),
+        ('rai:dataAnnotationPlatform', data_annotation_platform),
+        ('rai:dataAnnotationAnalysis', data_annotation_analysis),
+        ('rai:annotationsPerItem', annotations_per_item),
+        ('rai:annotatorDemographics', annotator_demographics),
+        ('rai:machineAnnotationTools', machine_annotation_tools),
+        ('rai:dataBiases', data_biases),
+        ('rai:dataLimitations', data_limitations),
+        ('rai:dataUseCases', data_use_cases),
+        ('rai:dataSocialImpact', data_social_impact),
+        ('rai:personalSensitiveInformation', personal_sensitive_information),
+        ('rai:dataReleaseMaintenancePlan', data_release_maintenance_plan),
+    ]
+    for json_key, val in rai_fields_map:
+        if val:
+            doc[json_key] = val
+            has_rai = True
+
+    if rai_properties:
+        for k, val in rai_properties.items():
+            if val is not None:
+                key = k if (':' in k or k.startswith('@')) else f'rai:{k}'
+                doc[key] = val
+                has_rai = True
+
+    if has_rai and RAI_CONFORMANCE not in doc['conformsTo']:
+        doc['conformsTo'].append(RAI_CONFORMANCE)
 
     # --- Distribution ---
     distribution: list[dict[str, Any]] = []

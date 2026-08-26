@@ -303,6 +303,13 @@ def summarize_record_set(record_set: RecordSet) -> dict[str, Any]:
             if isinstance(time_series_index, str)
             else getattr(time_series_index, 'uuid', None)
         )
+    has_synth = getattr(record_set, 'has_synthetic_data', None)
+    if has_synth is None and hasattr(record_set, 'extra_properties'):
+        has_synth = record_set.extra_properties.get(
+            'rai:hasSyntheticData', record_set.extra_properties.get('hasSyntheticData')
+        )
+    if has_synth is not None:
+        item['hasSyntheticData'] = to_json_safe(has_synth)
     return item
 
 
@@ -396,12 +403,70 @@ def summarize_metadata(metadata: Metadata) -> dict[str, Any]:
     if geo:
         summary['geospatial'] = geo
 
+    # --- Responsible AI (RAI & GeoCroissant RAI) ---
+    rai = summarize_rai_metadata(metadata)
+    if rai:
+        summary['responsible_ai'] = rai
+
     # --- Distribution & record sets ---
     distribution = summarize_distribution(metadata)
     if distribution:
         summary['distribution'] = distribution
     summary['record_sets'] = [summarize_record_set(rs) for rs in metadata.record_sets]
     return summary
+
+
+def summarize_rai_metadata(metadata: Any) -> dict[str, Any]:
+    """Extracts Responsible AI (RAI) metadata from a Croissant Metadata node."""
+    rai: dict[str, Any] = {}
+
+    # GeoCroissant Responsible AI properties
+    if getattr(metadata, 'spatial_bias', None) is not None:
+        rai['spatialBias'] = to_json_safe(metadata.spatial_bias)
+    if getattr(metadata, 'sampling_strategy', None) is not None:
+        rai['samplingStrategy'] = to_json_safe(metadata.sampling_strategy)
+
+    # Core Croissant RAI properties
+    rai_fields = [
+        ('data_collection', 'dataCollection'),
+        ('data_collection_type', 'dataCollectionType'),
+        ('data_collection_missing_data', 'dataCollectionMissingData'),
+        ('data_collection_raw_data', 'dataCollectionRawData'),
+        ('data_collection_timeframe', 'dataCollectionTimeFrame'),
+        ('data_imputation_protocol', 'dataImputationProtocol'),
+        ('data_preprocessing_protocol', 'dataPreprocessingProtocol'),
+        ('data_manipulation_protocol', 'dataDataManipulationProtocol'),
+        ('data_annotation_protocol', 'dataAnnotationProtocol'),
+        ('data_annotation_platform', 'dataAnnotationPlatform'),
+        ('data_annotation_analysis', 'dataAnnotationAnalysis'),
+        ('annotations_per_item', 'annotationsPerItem'),
+        ('annotator_demographics', 'annotatorDemographics'),
+        ('machine_annotation_tools', 'machineAnnotationTools'),
+        ('data_biases', 'dataBiases'),
+        ('data_limitations', 'dataLimitations'),
+        ('data_use_cases', 'dataUseCases'),
+        ('data_social_impact', 'dataSocialImpact'),
+        ('personal_sensitive_information', 'personalSensitiveInformation'),
+        ('data_release_maintenance_plan', 'dataReleaseMaintenancePlan'),
+    ]
+
+    for attr, key in rai_fields:
+        val = getattr(metadata, attr, None)
+        if val is not None:
+            rai[key] = to_json_safe(val)
+
+    # Synthetic data declaration
+    has_synth = getattr(metadata, 'has_synthetic_data', None)
+    if has_synth is None and hasattr(metadata, 'extra_properties'):
+        has_synth = metadata.extra_properties.get(
+            'rai:hasSyntheticData', metadata.extra_properties.get('hasSyntheticData')
+        )
+    if has_synth is None and isinstance(metadata, dict):
+        has_synth = metadata.get('rai:hasSyntheticData', metadata.get('hasSyntheticData'))
+    if has_synth is not None:
+        rai['hasSyntheticData'] = to_json_safe(has_synth)
+
+    return rai
 
 
 def secure_output_path(filename: str, output_dir: str | None = None) -> Path:

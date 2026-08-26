@@ -4,12 +4,12 @@ import json
 from geocr_mcp_server.spec import official_context
 
 
-TOPICS = ('overview', 'context', 'properties', 'example', 'python-api', 'all')
+TOPICS = ('overview', 'context', 'properties', 'rai', 'example', 'python-api', 'all')
 
 _OVERVIEW = """# GeoCroissant Specification - Overview
 
 GeoCroissant extends MLCommons Croissant with geospatial concepts for GeoAI and
-Earth-observation (EO) datasets.
+Earth-observation (EO) datasets, integrated with the Croissant Responsible AI (RAI) specification.
 
 ## Namespaces
 | Prefix | IRI | Description |
@@ -17,6 +17,7 @@ Earth-observation (EO) datasets.
 | sc | https://schema.org/ | schema.org namespace |
 | cr | http://mlcommons.org/croissant/ | Croissant base namespace |
 | geocr | http://mlcommons.org/croissant/geo/ | GeoCroissant extension namespace |
+| rai | http://mlcommons.org/croissant/RAI/ | Croissant Responsible AI extension |
 | dct | http://purl.org/dc/terms/ | Dublin Core terms |
 
 ## Conformance declaration (dataset level)
@@ -26,6 +27,7 @@ Earth-observation (EO) datasets.
   "http://mlcommons.org/croissant/geo/1.0"
 ]
 ```
+*(Add `"http://mlcommons.org/croissant/RAI/1.0"` when Responsible AI metadata is declared)*
 
 ## Core structure
 A Croissant document describes:
@@ -222,17 +224,78 @@ blue = SpectralBand(name="Blue",
 """
 
 
+_RAI = """# Responsible AI (RAI) Specification Reference
+
+GeoCroissant integrates the official MLCommons Croissant Responsible AI (RAI) specification
+(`http://mlcommons.org/croissant/RAI/`) and GeoCroissant geographic RAI extensions
+(`http://mlcommons.org/croissant/geo/`).
+
+## Complete A to Z Responsible AI Properties Catalog
+
+| Property | Namespace / IRI | Expected Type | Cardinality | Pillar | Description |
+|---|---|---|---|---|---|
+| rai:annotationsPerItem | http://mlcommons.org/croissant/RAI/ | sc:Text | ONE | Labeling | Number or distribution of human labels/ratings per instance |
+| rai:annotatorDemographics | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Labeling | Socio-demographic specifications of annotators/curators |
+| rai:dataAnnotationAnalysis | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Labeling | Methods for analyzing disagreements or uncertainty signals |
+| rai:dataAnnotationPlatform | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Labeling | Platforms or tools used by human annotators |
+| rai:dataAnnotationProtocol | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Labeling | Instructions and guidelines for annotation workforce |
+| rai:dataBiases | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Safety & Bias | Imbalances, skews, or historical biases in the data |
+| rai:dataCollection | http://mlcommons.org/croissant/RAI/ | sc:Text | ONE | Provenance | Key stages and methodology of the data collection process |
+| rai:dataCollectionMissingData | http://mlcommons.org/croissant/RAI/ | sc:Text | ONE | Provenance | Data uncollected, missing, or dropped during acquisition |
+| rai:dataCollectionRawData | http://mlcommons.org/croissant/RAI/ | sc:Text | ONE | Provenance | Description of source raw data before preprocessing |
+| rai:dataCollectionTimeFrame | http://mlcommons.org/croissant/RAI/ | sc:Date / sc:DateTime | MANY | Provenance | Date/time range when data was observed/collected |
+| rai:dataCollectionType | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Provenance | Collection modality (Direct measurement, Web API, etc.) |
+| rai:dataImputationProtocol | http://mlcommons.org/croissant/RAI/ | sc:Text | ONE | Provenance | Algorithms used to fill missing values or dropped pixels |
+| rai:dataLimitations | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Safety & Bias | Known data generalization limits and quality issues |
+| rai:dataDataManipulationProtocol | http://mlcommons.org/croissant/RAI/ | sc:Text | ONE | Provenance | Data transformations, reprojections, or filtering |
+| rai:dataPreprocessingProtocol | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Provenance | Preprocessing steps (calibration, scaling, noise removal) |
+| rai:dataReleaseMaintenancePlan | http://mlcommons.org/croissant/RAI/ | sc:Text | ONE | Impact | Versioning cadence and dataset maintenance policy |
+| rai:dataSocialImpact | http://mlcommons.org/croissant/RAI/ | sc:Text | ONE | Impact | Societal benefits, potential harms, and ethical risks |
+| rai:dataUseCases | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Impact | Intended, authorized, and benchmark use cases |
+| rai:hasSyntheticData | http://mlcommons.org/croissant/RAI/ | sc:Boolean | ONE | Safety & Bias | Declaration whether the dataset contains synthetic data |
+| rai:machineAnnotationTools | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Labeling | Software or AI models used in automated data labeling |
+| rai:personalSensitiveInformation | http://mlcommons.org/croissant/RAI/ | sc:Text | MANY | Safety & Bias | Declarations regarding PII presence or absence |
+| geocr:samplingStrategy | http://mlcommons.org/croissant/geo/ | sc:Text | ONE | Safety & Bias | Geographic/temporal sampling protocol (GeoCroissant RAI) |
+| geocr:spatialBias | http://mlcommons.org/croissant/geo/ | sc:Text | ONE | Safety & Bias | Spatial representativeness limitations (GeoCroissant RAI) |
+
+## Conformance Declaration
+```json
+"conformsTo": [
+  "http://mlcommons.org/croissant/1.1",
+  "http://mlcommons.org/croissant/geo/1.0",
+  "http://mlcommons.org/croissant/RAI/1.0"
+]
+```
+
+## Generating Responsible AI Metadata via MCP
+All RAI properties are generated on demand via MCP tools rather than hardcoded. Specify arguments in `create_geocroissant_scaffold`, `create_geocroissant_from_stac`, or `create_geocroissant_from_stac_sources`:
+- `spatial_bias`: Description of geographic limitations or domain boundaries
+- `sampling_strategy`: Description of scene selection, cadence, or query filters
+- `data_biases`: Imbalances or acquisition biases (e.g. cloud-free optical bias)
+- `data_limitations`: Generalization limits, cloud/atmospheric occlusion, sensor noise
+- `data_use_cases`: Intended, authorized, and benchmark applications
+- `data_social_impact`: Anticipated positive impacts and risk mitigation
+- `personal_sensitive_information`: Declarations regarding PII presence or absence
+- `has_synthetic_data`: Boolean flag indicating if dataset contains synthetic data
+- `data_collection`: Description of data collection protocol or source archive
+- `rai_properties`: Dictionary of additional Croissant RAI properties (e.g. `prov:wasGeneratedBy`)
+
+When any RAI parameter is provided, `http://mlcommons.org/croissant/RAI/1.0` is dynamically added to `conformsTo`.
+"""
+
+
 def render_reference(topic: str = 'all') -> str:
     """Renders the reference documentation for a given topic."""
     parts = {
         'overview': _OVERVIEW,
         'properties': _PROPERTIES,
+        'rai': _RAI,
         'context': _context_doc(),
         'example': _EXAMPLE,
         'python-api': _PYTHON_API,
     }
     if topic == 'all':
         return '\n\n---\n\n'.join(
-            parts[key] for key in ('overview', 'context', 'properties', 'example', 'python-api')
+            parts[key] for key in ('overview', 'context', 'properties', 'rai', 'example', 'python-api')
         )
     return parts[topic]

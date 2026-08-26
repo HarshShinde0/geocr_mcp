@@ -85,6 +85,16 @@ def compose_document(
     license_url: str,
     creators: list[str] | None,
     source_results: list[dict[str, Any]],
+    spatial_bias: str = '',
+    sampling_strategy: str = '',
+    data_collection: str = '',
+    data_biases: list[str] | None = None,
+    data_limitations: list[str] | None = None,
+    data_use_cases: list[str] | None = None,
+    data_social_impact: str = '',
+    personal_sensitive_information: list[str] | None = None,
+    has_synthetic_data: bool | None = None,
+    rai_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Builds one dataset while retaining a RecordSet for every source search."""
     raw_items = [
@@ -99,6 +109,16 @@ def compose_document(
         creators=creators,
         raw_items=raw_items,
         catalog_id=source_results[0]['catalog_id'],
+        spatial_bias=spatial_bias,
+        sampling_strategy=sampling_strategy,
+        data_collection=data_collection,
+        data_biases=data_biases,
+        data_limitations=data_limitations,
+        data_use_cases=data_use_cases,
+        data_social_impact=data_social_impact,
+        personal_sensitive_information=personal_sensitive_information,
+        has_synthetic_data=has_synthetic_data,
+        rai_properties=rai_properties,
     )
     document.pop('geocr:recordEndpoint', None)
     document.pop('geocr:bandConfiguration', None)

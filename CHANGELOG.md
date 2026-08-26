@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 23-08-2026
 
+
 First stable release of the GeoCroissant MCP Server. MCP clients can discover
 Earth observation data, create GeoCroissant metadata, validate it, and inspect
 its records and source files.
@@ -35,6 +36,9 @@ its records and source files.
   usage.
 - Stdio, SSE, and streamable HTTP transports.
 - HTTP and MCP health checks, Docker support, and Render deployment settings.
+- Responsible AI (Croissant RAI 1.0) and GeoCroissant geographic RAI metadata support.
+- Extraction of structured metadata section during inspection.
+- MCP tool usage for creating GeoCroissant metadata and AI metadata
 
 > [!TIP]
 > Multi-source generation works with any catalogs in the active YAML file. The

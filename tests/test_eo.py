@@ -342,13 +342,14 @@ class TestCatalogConfigOverride:
 
 
 class TestGeocroissantFromStac:
-    def _build(self, items):
+    def _build(self, items, **kwargs):
         return eo.geocroissant_from_stac(
             name='Test EO Dataset',
             description='Generated from pystac model instances.',
             license_url='https://creativecommons.org/licenses/by/4.0/',
             creators=['NASA'],
             raw_items=items,
+            **kwargs,
         )
 
     def test_empty_items_raise(self):
@@ -361,6 +362,8 @@ class TestGeocroissantFromStac:
             'http://mlcommons.org/croissant/1.1',
             'http://mlcommons.org/croissant/geo/1.0',
         ]
+        assert 'geocr:spatialBias' not in doc
+        assert 'rai:dataLimitations' not in doc
         assert doc['geocr:coordinateReferenceSystem'] == 'EPSG:4326'
         assert doc['geocr:recordEndpoint'] == ('https://earth-search.aws.element84.com/v1')
         # Bands ordered by center wavelength; micrometers converted to nm.
@@ -407,6 +410,33 @@ class TestGeocroissantFromStac:
         # The generated document must pass metadata validation offline.
         dataset = common.load_dataset(doc)
         assert dataset.metadata.name == 'Test EO Dataset'
+
+    def test_document_with_rai_properties(self):
+        doc = self._build(
+            [_stac_item()],
+            spatial_bias='Regional coverage',
+            sampling_strategy='Uniform 10-day intervals',
+            data_collection='Sentinel-2 L2A STAC query',
+            personal_sensitive_information=['No PII'],
+            data_limitations=['Atmospheric occlusion'],
+            data_biases=['Cloud-free bias'],
+            data_use_cases=['Flood mapping'],
+            data_social_impact='Emergency response aid',
+            has_synthetic_data=False,
+            rai_properties={'annotatorDemographics': ['Domain experts'], 'prov:wasGeneratedBy': 'Automated STAC harvest'},
+        )
+        assert 'http://mlcommons.org/croissant/RAI/1.0' in doc['conformsTo']
+        assert doc['geocr:spatialBias'] == 'Regional coverage'
+        assert doc['geocr:samplingStrategy'] == 'Uniform 10-day intervals'
+        assert doc['rai:dataCollection'] == 'Sentinel-2 L2A STAC query'
+        assert doc['rai:personalSensitiveInformation'] == ['No PII']
+        assert doc['rai:dataLimitations'] == ['Atmospheric occlusion']
+        assert doc['rai:dataBiases'] == ['Cloud-free bias']
+        assert doc['rai:dataUseCases'] == ['Flood mapping']
+        assert doc['rai:dataSocialImpact'] == 'Emergency response aid'
+        assert doc['rai:hasSyntheticData'] is False
+        assert doc['rai:annotatorDemographics'] == ['Domain experts']
+        assert doc['prov:wasGeneratedBy'] == 'Automated STAC harvest'
 
     def test_field_band_configuration_attached_to_image_url(self):
         doc = self._build([_stac_item()])

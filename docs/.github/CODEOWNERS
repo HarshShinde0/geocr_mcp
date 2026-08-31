@@ -1,13 +1,2 @@
 # CODEOWNERS for GeoCroissant MCP docs
-
-# Docs, specification, and schema reviewed by repository maintainers
-/docs/ @HarshShinde0/geocr-maintainers @omshinde
-/docs/specification/ @HarshShinde0/geocr-maintainers @omshinde
-/schema/ @HarshShinde0/geocr-maintainers @omshinde
-
-# GitHub configuration (workflows, issue templates)
-# File path is docs/.github
-/docs/.github/ @HarshShinde0/geocr-maintainers @omshinde
-
-# Agent and contributor guidance
-/AGENTS.md @HarshShinde0/geocr-maintainers @omshinde
+* @HarshShinde0 @omshinde

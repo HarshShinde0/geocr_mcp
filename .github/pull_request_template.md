@@ -1,20 +1,21 @@
 ## Description
-<!--- Describe your changes in detail --->
 
-## Motivation and Context
-<!--- Why is this change required? What problem does it solve? --->
-<!--- If it fixes an open issue, please link to the issue here. --->
+What did you change in the GeoCroissant server or docs. Include the tool or property you touched, for example `create_geocroissant_from_stac`, `geocr:bandConfiguration`, or `config/catalogs.yaml:8`.
 
-## Change Type
-<!--- Mark every type that applies. --->
-- [ ] Bug fix (backward-compatible correction)
-- [ ] New feature (backward-compatible functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to change)
-- [ ] Documentation update
+## GeoCroissant checks
 
-## Checklist
-<!--- Mark every completed item. --->
-- [ ] Code passes the project style checks (`ruff check`).
-- [ ] Documentation is updated when behavior or usage changes.
-- [ ] Tests cover the change (`pytest`).
-- [ ] New and existing tests pass.
+- [ ] `uv run ruff check src tests` passes
+- [ ] `uv run python -m pytest -o addopts='' tests` passes
+- [ ] `npx mint validate` in `docs` passes when docs changed
+- [ ] Hosted endpoint `https://geocr-mcp-server.onrender.com/mcp` still returns tools when `POST /mcp` is tested
+
+## Type
+
+- [ ] Fix (bbox handling, catalog lookup, band mapping, asset URL preservation)
+- [ ] Feature (new `geocr:` property, new tool param, new catalog)
+- [ ] Breaking (rename, type change, limit change)
+- [ ] Docs only (Mintlify `docs/` for 2026-08-31)
+
+## Related issue
+
+Link the discussion or issue, or note if this is a small fix with no prior discussion.

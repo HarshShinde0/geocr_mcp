@@ -1,0 +1,63 @@
+---
+title: "Server tools"
+sidebarTitle: "Tools"
+---
+
+`geocr-mcp-server` exposes 17 tools. The list comes from `src/geocr_mcp_server/tools.py`. The server does not expose resources or prompts.
+
+## Discovery and geocoding
+
+| Tool | Purpose |
+| --- | --- |
+| `ping` | Returns `pong` for health checks |
+| `list_eo_catalogs` | Lists registered STAC catalogs from the YAML registry |
+| `search_eo_datasets` | Lists collections from a catalog with `limit` 1 to 500 and `offset` |
+| `get_eo_dataset_details` | Returns collection metadata for one collection id |
+| `geocode_place` | Resolves a place name to EPSG:4326 bboxes with `limit` 1 to 10 |
+| `count_eo_scenes` | Counts matching scenes per collection without fetching items |
+| `search_eo_scenes` | Searches items inside a bbox with optional `datetime_range` and `max_cloud_cover`, `limit` 1 to 50 |
+
+All spatial inputs use `bbox` as `[min_lon, min_lat, max_lon, max_lat]`. Coverage in generated documents is stored as `GeoShape` `box` with `"minLat minLon maxLat maxLon"`.
+
+## GeoCroissant generation
+
+| Tool | Purpose |
+| --- | --- |
+| `create_geocroissant_from_stac` | Searches STAC and builds a GeoCroissant doc with `scenes` RecordSet, `cr:FileObject` distribution, `geocr:` properties and inline `data` rows; validates with `mlcroissant` |
+| `create_geocroissant_from_stac_sources` | Same, but composes independent searches into one document with one RecordSet per source; does not align bands or grids |
+| `create_geocroissant_scaffold` | Builds a scaffold from explicit parameters via `spec.build_scaffold` with `@context` from `spec.official_context()` |
+
+Generated documents have `isLiveDataset: true`, `geocr:coordinateReferenceSystem: EPSG:4326`, `geocr:recordEndpoint` set to the catalog URL, and `conformsTo` with `http://mlcommons.org/croissant/1.1` and `http://mlcommons.org/croissant/geo/1.0`, plus RAI when set.
+
+## Validation and inspection
+
+| Tool | Purpose |
+| --- | --- |
+| `validate_croissant` | Validates JSON, JSON-LD, structure graph and conformance; does not check that `contentUrl` exists |
+| `inspect_geocroissant` | Summarizes metadata, `geocr:` properties, distribution, RecordSets and Fields |
+| `get_structure_graph` | Returns nodes (`Metadata`, `FileObject`, `FileSet`, `RecordSet`, `Field`) and directed edges |
+| `list_record_sets` | Lists RecordSets with fields, keys and inline counts |
+| `get_records_preview` | Materializes up to 100 rows from a RecordSet, with optional `filters` for regex extracted fields |
+| `extract_distribution_urls` | Lists `contentUrl`, `encodingFormat`, sizes, checksums, `includes` and `containedIn` per distribution entry |
+| `get_geocroissant_spec_reference` | Returns spec reference text for `overview`, `context`, `properties`, `rai`, `example`, `python-api` or `all` |
+
+## Method shapes
+
+`tools/list` returns tool names and JSON Schema input definitions.
+
+`tools/call` takes `name` and `arguments` and returns `content` with `type: text` JSON and `isError`.
+
+Example:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "geocode_place",
+    "arguments": { "place_name": "Zurich, Switzerland" },
+    "_meta": { "io.modelcontextprotocol/protocolVersion": "2026-08-31" }
+  }
+}
+```

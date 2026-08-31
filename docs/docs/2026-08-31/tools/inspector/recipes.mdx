@@ -1,0 +1,67 @@
+---
+title: "Recipes"
+description: Practical guides for transports, importing configs, reviewing MCP Apps, Docker, and network hosting
+---
+
+## Stdio versus HTTP
+
+Stdio: Inspector spawns the process. Everything positional is the command line.
+
+```bash
+mcp-inspector node build/index.js -- --verbose --config /etc/myserver.conf
+```
+
+Use `--` before arguments meant for the server. Pass environment with `-e` and working directory with `--cwd`:
+
+```bash
+mcp-inspector -e API_KEY=abc123 --cwd ~/projects/my-server uvx geocr-mcp-server
+```
+
+Server `stderr` appears in the Console tab, so check there first when a connection fails.
+
+HTTP and streamable-http:
+
+```bash
+mcp-inspector --server-url https://geocr-mcp-server.onrender.com/mcp --transport http
+```
+
+`--transport` accepts `http` and `sse`. Set `protocolEra` to `auto` or `modern` only when you need 2026-08-31 behavior.
+
+## Importing existing configs
+
+On the Servers screen, Add Servers can import from Claude Desktop, Cursor, Cline, VS Code, or an MCP Registry `server.json`. Import merges into the active catalog, so existing entries stay. To keep the catalog untouched, launch with a foreign file read-only:
+
+```bash
+mcp-inspector --config ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+`--config` guarantees the file is never written.
+
+## Docker
+
+```bash
+docker run --rm -p 6274:6274 ghcr.io/modelcontextprotocol/inspector
+```
+
+Read the session token from container logs or pin it with `-e MCP_INSPECTOR_API_TOKEN=<value>`. The image defaults to `--web` bound to `0.0.0.0:6274`. Add `--no-healthcheck` when running `--cli` or `--tui` because those have no web server:
+
+```bash
+docker run --rm --no-healthcheck ghcr.io/modelcontextprotocol/inspector --cli uvx geocr-mcp-server --method tools/list
+```
+
+If you remap the port, set `ALLOWED_ORIGINS` to the browser origin, for example `ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080`.
+
+## Hosting on a network
+
+The Inspector binds `localhost` by default. To expose it:
+
+- Bind a specific address with `HOST=192.168.1.50`.
+- Behind a reverse proxy, set `ALLOWED_ORIGINS=https://inspector.example.com`.
+- For a wildcard bind, set `DANGEROUSLY_BIND_ALL_INTERFACES=true`. `ALLOWED_ORIGINS` replaces the default list, so include every origin you use.
+
+## Workflow
+
+1. CLI first: `--method initialize` confirms the server starts.
+2. Web UI to explore tool schemas and try calls against `geocr-mcp-server`.
+3. Test errors: bad bbox, unknown collection, large limits.
+4. Lock checks in CI with `--format json` piped to `jq -e` and `--stored-auth-only` when auth is involved.

@@ -1,0 +1,30 @@
+---
+title: "Versioning"
+sidebarTitle: "Versioning"
+---
+
+Two things are versioned: the MCP protocol date and the GeoCroissant document version.
+
+## Protocol version
+
+The docs route is `2026-08-31`. The server negotiates MCP capabilities in the `initialize` step and reports its version as `1.0.0` from `geocr_mcp_server/__init__.py`.
+
+## GeoCroissant document version
+
+Generated documents declare conformance in `conformsTo`:
+
+- `http://mlcommons.org/croissant/1.1`
+- `http://mlcommons.org/croissant/geo/1.0`
+- `http://mlcommons.org/croissant/RAI/1.0` when any RAI field is set
+
+The `@context` is defined in `spec.official_context()` and includes `sc`, `cr`, `geocr`, `rai`, `dct`, `prov`.
+
+## Package version
+
+`geocr-mcp-server` is 1.0.0. It follows semver:
+
+- Major: breaking change to tool names or required parameters.
+- Minor: new tool or compatible field added.
+- Patch: bug fix or `mlcroissant` validation update.
+
+Tool behavior for limits and bbox validation is part of the contract: `search_eo_datasets` limit 1 to 500, `search_eo_scenes` and generation limits 1 to 50, `geocode_place` limit 1 to 10, `get_records_preview` limit 1 to 100. Changes to these caps are minor or major depending on compatibility.

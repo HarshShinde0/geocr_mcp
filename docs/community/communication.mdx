@@ -1,0 +1,26 @@
+---
+title: "Communication channels"
+sidebarTitle: "Communication"
+---
+
+This page lists where `HarshShinde0/geocr_mcp` discussion happens. The scope is Earth observation discovery and GeoCroissant tooling in this repo. General Model Context Protocol questions go to upstream MCP repos.
+
+## Channels
+
+### GitHub
+
+- Issues at `https://github.com/HarshShinde0/geocr_mcp/issues` for bugs, catalog requests, and feature ideas.
+- Pull requests at `https://github.com/HarshShinde0/geocr_mcp/pulls` for code and doc changes.
+- Discussions on GitHub for open questions and workflow design.
+
+No separate Slack or Discord is owned by this repo. If you meet maintainers elsewhere, keep decisions on GitHub so they are recorded.
+
+## What to include when you open an issue
+
+Add the tool name such as `geocode_place`, `count_eo_scenes`, or `create_geocroissant_from_stac`. Include the bbox as `[min_lon, min_lat, max_lon, max_lat]`, date filter, catalog id, collection id, and the full error message. For validation problems include the `mlcroissant` report.
+
+For place name problems include the query string and the result from `geocode_place` which uses Nominatim at `https://nominatim.openstreetmap.org/search` with `User-Agent: geocr-mcp/1.0 (https://github.com/HarshShinde0/geocr_mcp)` as set in `src/geocr_mcp_server/geocoding.py:8`.
+
+## Scope note
+
+This repo tracks GeoCroissant work only. It does not handle upstream MCP spec or SDK governance. The server has 17 tools, all defined in `src/geocr_mcp_server/tools.py` and registered through FastMCP. Two catalogs are registered: `earth-search` and `veda` in `src/geocr_mcp_server/config/catalogs.yaml`.

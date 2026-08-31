@@ -1,0 +1,46 @@
+---
+title: Subscriptions
+---
+
+<div id="enable-section-numbers" />
+
+MCP protocol reference. `geocr-mcp-server` advertises `tools/listChanged: true` but does not push subscription streams for GeoCroissant data.
+
+`subscriptions/listen` opens a long lived notification stream. It replaces `resources/subscribe` and the old `GET` endpoint.
+
+## Opening a stream
+
+The client sends `subscriptions/listen` with a filter:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "subscriptions/listen",
+  "params": {
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-08-31"
+    },
+    "notifications": {
+      "toolsListChanged": true,
+      "promptsListChanged": true,
+      "resourcesListChanged": true,
+      "resourceSubscriptions": ["file:///project/config.json"]
+    }
+  }
+}
+```
+
+All fields are optional.
+
+## Acknowledgment
+
+The server must send `notifications/subscriptions/acknowledged` as the first message with `io.modelcontextprotocol/subscriptionId` set to the request id. It must not send other subscription notifications before that. The acknowledgment lists the subset of the filter the server will honor.
+
+## Receiving notifications
+
+Every notification on the stream carries `io.modelcontextprotocol/subscriptionId` so the client can demultiplex when several subscriptions share one channel. On stdio this field is required.
+
+## Cancellation and closure
+
+A subscription ends when the client cancels it (close the SSE stream on HTTP, send `notifications/cancelled` on stdio), when the server shuts down, or when the transport drops. For a graceful shutdown the server should reply to the original `subscriptions/listen` request with `resultType: complete` before closing the stream. A close without that response is an abnormal disconnect and the client may reconnect.

@@ -1,0 +1,61 @@
+---
+title: Catalog config versioning
+sidebarTitle: Versioning
+---
+
+The GeoCroissant catalog registry is not versioned with `server.json`. It is versioned as a YAML snapshot that is shipped with the package and refreshed when providers change. The logic lives in `src/geocr_mcp_server/catalogs.py:38` and the data lives in `src/geocr_mcp_server/config/catalogs.yaml:1`.
+
+## What is versioned
+
+* The file `src/geocr_mcp_server/config/catalogs.yaml:1` contains `default_catalog` and a `catalogs` map. Each catalog has a `name`, `url`, `description`, and an informational `collections` list. This is the only file that defines the registry.
+* The snapshot is not the live catalog. Live discovery in `search_eo_datasets` calls `GET {url}/collections` and returns whatever the provider advertises at that moment.
+
+The header comment in `src/geocr_mcp_server/config/catalogs.yaml:10` records the last audit for earth-search:
+
+```
+# Collection ids below were audited against the live API on 2026-08-23:
+# GET https://earth-search.aws.element84.com/v1/collections returns exactly
+# nine collections
+```
+
+That audit lists nine ids: `sentinel-2-c1-l2a`, `sentinel-2-l2a`, `sentinel-2-l1c`, `sentinel-2-pre-c1-l2a`, `landsat-c2-l2`, `sentinel-1-grd`, `cop-dem-glo-30`, `cop-dem-glo-90`, and `naip`. Veda is not pinned to a count because it adds thematic collections frequently.
+
+## Live discovery vs snapshot
+
+The registry keeps both views on purpose.
+
+* `list_catalogs()` in `src/geocr_mcp_server/catalogs.py:107` returns each catalog with `collection_discovery: "live"` and `configured_collection_count`. That count comes from the YAML. The actual discovery still hits the network.
+* `search_eo_datasets` with `catalog_id` and `limit` 1 to 500 pages through the live API. If the provider adds a new collection before the snapshot is updated, it will appear here first.
+
+When you need to inventory a catalog, call `search_eo_datasets` with `limit: 500` and increase `offset` by `limit` until `count` is less than `limit`. Do not rely on the YAML list as a complete inventory.
+
+## Default catalog
+
+`default_catalog` is set to `earth-search` in `src/geocr_mcp_server/config/catalogs.yaml:8`. `get_config()` in `src/geocr_mcp_server/catalogs.py:38` normalizes the id to lowercase and validates that it exists in `catalogs`. If `default_catalog` is empty, the first key in the file becomes the default. If it points at a missing id, load fails with a `ValueError`.
+
+To change the default without editing the shipped file, create a copy of the YAML, edit the `default_catalog` value, and point `GEOCR_CATALOGS_CONFIG` at the copy. This is covered in the FAQ.
+
+## Caching and reload
+
+`get_config()` is wrapped with `lru_cache` in `src/geocr_mcp_server/catalogs.py:38`. The first call reads and validates the YAML, then caches the result. The server does not poll for file changes. To pick up a new file after you change `GEOCR_CATALOGS_CONFIG` or after you update the YAML on disk, call `reload_config()` in `src/geocr_mcp_server/catalogs.py:89`:
+
+```python
+from geocr_mcp_server.catalogs import reload_config, get_config
+
+reload_config()
+config = get_config()
+print(config["default_catalog"])
+```
+
+In a running geocr-mcp-server process, `reload_config()` clears the cache so the next tool call re-reads the file. You do not need to restart the process, but a restart also clears the cache.
+
+## Versioning practice
+
+* Treat the YAML snapshot as documentation that is refreshed on a release. The code comment with the audit date is the change log for earth-search.
+* Treat live discovery as the source of truth for collection ids. Update the snapshot when `search_eo_datasets` shows a new collection that should be documented.
+* Keep collection ids unique within a catalog. `src/geocr_mcp_server/catalogs.py:71` validates uniqueness and will raise if a duplicate appears.
+* Validate YAML shape on change. `src/geocr_mcp_server/catalogs.py:43` checks that the file is a mapping, that `catalogs` is non empty, and that each catalog has a `url` and a list of non empty string collections. A bad file fails fast at load time.
+
+## Server version
+
+The package version in `src/geocr_mcp_server/__version__.py` and the health endpoint in `src/geocr_mcp_server/server.py:102` report the server release. The catalog snapshot is part of that release, but the live STAC APIs can change independently. If you need to pin a dataset to a point in time, record the `collection_id`, `catalog_id`, `bbox` in `[min_lon, min_lat, max_lon, max_lat]`, and `datetime_range` alongside the generated GeoCroissant. The GeoCroissant document itself contains the provider URIs and the bbox that was used.

@@ -1,0 +1,34 @@
+---
+title: Caching
+---
+
+<div id="enable-section-numbers" />
+
+MCP protocol reference. Clients may cache list results and use `ttlMs` and `cacheScope`.
+
+For `geocr-mcp-server`, live STAC data changes often and the server does not set long TTL values. Clients should treat EO search results as fresh only for a short time and should refetch after `notifications/tools/list_changed`.
+
+## Cacheable results
+
+Cache hints apply to `resultType: complete` results from `server/discover`, `tools/list`, `prompts/list`, `resources/list`, `resources/templates/list` and `resources/read`. `geocr-mcp-server` only returns `tools/list` and `server/discover` among these, so only those two carry hints.
+
+Results with `resultType: input_required` are not cacheable.
+
+## Cache key
+
+The cache key is the method plus parameters that affect the result, such as `cursor` for paginated lists. Clients must not serve a cached response for a different method or parameter set. Requests that carry `inputResponses` or `requestState` must not be cached.
+
+## Fields
+
+- `ttlMs` is the freshness hint in milliseconds. `0` means immediately stale. Positive values mean fresh until `t_received + ttlMs`. Negative values are treated as `0`.
+- `cacheScope` is `public` when the result is the same for all users, and `private` when it depends on authentication context.
+
+`geocr-mcp-server` returns lists that are the same for all callers, so `public` would apply when a hint is present.
+
+## Notifications
+
+A `notifications/tools/list_changed` invalidates a cached `tools/list` even if its TTL has not expired.
+
+## Pagination and caching
+
+Each page is cached separately with its own `ttlMs`. Clients that need a consistent snapshot should refetch from the start without a cursor. If a cursor becomes invalid, clients should discard cached pages and start over.

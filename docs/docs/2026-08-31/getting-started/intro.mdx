@@ -1,0 +1,69 @@
+---
+title: "What is GeoCroissant MCP?"
+sidebarTitle: "What is GeoCroissant?"
+---
+
+GeoCroissant MCP is an open-source Model Context Protocol server that turns natural language into GeoCroissant datasets. It searches live Earth observation archives and returns ML-ready JSON-LD.
+
+The server is `geocr-mcp-server` v1.0.0, built with FastMCP in Python. It exposes 17 tools, no resources or prompts, over two transports: stdio for local use and streamable-http for hosted deployments.
+
+<Frame>
+  <img src="/logo/geocr.svg" alt="GeoCroissant Model Context Protocol" />
+</Frame>
+
+Presented by Rajat Shinde at Responsible Gen-AI for NASA Earthdata 2026 — [responsible-genai.hackweek.io](https://responsible-genai.hackweek.io/) · [Slides](https://docs.google.com/presentation/d/1jKHceEsNqOKvT5ZFxJCzZ8OUhcgs2LDX/edit?slide=id.g3f86c08d9c0_1_2#slide=id.g3f86c08d9c0_1_2) · [Demo](https://github.com/responsible-genai-hackweek/genai-ready-data-geocroissant/blob/main/GeoCroissant-MCP-Demo.md)
+
+## What it does
+
+Catalog discovery lists the two registered STAC catalogs, `earth-search` (Element84 on AWS, 9 collections) and `veda` (NASA VEDA), with live pagination via `search_eo_datasets`. Pages are 1 to 500 collections; the default is 15.
+
+Collection inspection with `get_eo_dataset_details` returns provider metadata for one collection id, including spatial and temporal extents, providers, and item asset keys.
+
+Place to bbox with `geocode_place` resolves a place name to WGS84 bounding boxes `[min_lon, min_lat, max_lon, max_lat]` EPSG:4326 through Nominatim. It returns 1 to 10 candidates; the default is 5.
+
+Scene search and counts with `count_eo_scenes` and `search_eo_scenes` query STAC items inside a bbox with `datetime_range` and optional `max_cloud_cover`. Scene limits are 1 to 50; defaults are 10 for search and 5 for generation.
+
+GeoCroissant generation with `create_geocroissant_from_stac` builds one RecordSet from a search, while `create_geocroissant_from_stac_sources` composes many searches into one dataset with one RecordSet per source. Both preserve provider-native `contentUrl` values (`s3://`, `https://`) and embed one inline record per scene. The RecordSet has 7 fields: `scene_id`, `collection`, `datetime`, `cloud_cover`, `epsg`, `image_url`, `asset_urls`.
+
+Scaffold and validation with `create_geocroissant_scaffold` creates a starter document with the official `@context` (`sc`, `cr`, `geocr`, `rai`, `dct`, `prov`) and dual conformance `http://mlcommons.org/croissant/1.1` + `http://mlcommons.org/croissant/geo/1.0`. `validate_croissant` checks any GeoCroissant document with `mlcroissant`. Other tools are `inspect_geocroissant`, `get_structure_graph`, `list_record_sets`, `get_records_preview`, `extract_distribution_urls`, `get_geocroissant_spec_reference`, and `ping`.
+
+## Workflow (6 steps)
+
+This is the path the README describes and the code in `src/geocr_mcp_server/tools.py:31` implements:
+
+1. List the registered STAC catalogs with `list_eo_catalogs`. You get `earth-search` and `veda`.
+2. Search their current collections with `search_eo_datasets` and review the most relevant results. Check live metadata, not just ids.
+3. Resolve a place to an EPSG:4326 bounding box with `geocode_place` when you do not have coordinates. The bbox is always `[min_lon, min_lat, max_lon, max_lat]`.
+4. Count matching scenes with `count_eo_scenes` before you request records.
+5. Generate GeoCroissant JSON-LD with `create_geocroissant_from_stac` for one collection, or with `create_geocroissant_from_stac_sources` for many. Pass the bbox, collections, dates, and optional `max_cloud_cover`.
+6. Validate or inspect the result with `validate_croissant` or `inspect_geocroissant`, and preview rows with `get_records_preview`.
+
+Validation checks metadata shape with `mlcroissant`. It does not check that remote `contentUrl` targets exist or that you have access. Source URIs are stored as provider-native `s3://` and `https://` strings. The server keeps them as is.
+
+## Why it exists
+
+STAC items describe archives for catalog search. ML loaders need tables. GeoCroissant adds the table layer: spatial coverage as a GeoShape box, temporal coverage, CRS, band configuration, and a RecordSet that `mlcroissant` can iterate as rows. This server generates that layer directly from STAC results, so you can ask for scenes and get a dataset description in one step.
+
+## Supported clients
+
+Any MCP client that speaks stdio or streamable-http works. This includes Claude Desktop, Cursor, VS Code with Copilot, Antigravity, Kiro, Claude Code, OpenCode, the MCP Inspector, and agent frameworks that wrap MCP tools. Hosted mode is `https://geocr-mcp-server.onrender.com/mcp` over streamable-http, as listed in the README. Local mode is stdio.
+
+## Start building
+
+<CardGroup cols={2}>
+  <Card title="Connect local servers" icon="server" href="/docs/2026-08-31/develop/connect-local-servers">
+    Run geocr-mcp-server locally over stdio and point your client at it.
+  </Card>
+
+  <Card title="Tool reference" icon="wrench" href="/docs/2026-08-31/sdk">
+    Full signatures for all 17 tools, with limits, bbox rules, and return shapes.
+  </Card>
+
+  <Card title="GeoCroissant specification" icon="file-code" href="/specification/2026-08-31">
+    Namespaces, properties, and conformance for GeoCroissant 1.0.
+  </Card>
+
+  <Card title="View examples" icon="laptop-code" href="/examples">
+    Workflows from geocoding to scene counts to generated GeoCroissant.
+  </Card>
+</CardGroup>

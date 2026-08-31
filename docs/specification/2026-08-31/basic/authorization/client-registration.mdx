@@ -1,0 +1,42 @@
+---
+title: Client registration
+---
+
+<div id="enable-section-numbers" />
+
+MCP protocol reference for client registration. `geocr-mcp-server` does not require client registration for `POST /mcp`.
+
+MCP supports three registration paths. Clients that support all three should prefer them in this order: pre-registered credentials, client ID metadata documents, dynamic client registration.
+
+## Client ID metadata documents
+
+Clients and servers should support OAuth client ID metadata documents. The client hosts a JSON document at an HTTPS URL and uses that URL as `client_id`. The document must contain `client_id`, `client_name` and `redirect_uris`, and `client_id` must equal the document URL.
+
+Authorization servers that support this mode advertise `client_id_metadata_document_supported: true`, fetch the document for URL form client ids, validate that the URL matches, check that the requested `redirect_uri` is allowed, and respect HTTP cache headers.
+
+Example:
+
+```json
+{
+  "client_id": "https://app.example.com/oauth/client-metadata.json",
+  "client_name": "Example MCP Client",
+  "redirect_uris": ["http://127.0.0.1:3000/callback"],
+  "grant_types": ["authorization_code"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+## Pre-registration
+
+Clients may use a statically configured client id and secret for a known authorization server, or allow users to enter them through a configuration UI.
+
+## Dynamic client registration
+
+Dynamic client registration (RFC 7591) may be used for backward compatibility where client ID metadata documents are not supported. The spec marks it as deprecated. New implementations should use client ID metadata documents.
+
+Clients must set an appropriate `application_type`. Native apps should use `native`, remote web apps should use `web`. Servers may reject redirect URIs that do not match the declared application type.
+
+## Authorization server binding
+
+Credentials obtained from one authorization server are bound to that server issuer. If protected resource metadata points to a different issuer, clients must not reuse the old credentials and must register again. Client ID metadata document ids are portable because the server fetches them on demand.

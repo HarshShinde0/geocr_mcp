@@ -1,0 +1,14 @@
+---
+title: "Interceptors Working Group"
+sidebarTitle: "Interceptors"
+---
+
+This group is upstream only. `HarshShinde0/geocr_mcp` does not implement an interceptor or middleware layer for MCP calls.
+
+## What this repo does for external calls
+
+- STAC base URLs come from `src/geocr_mcp_server/config/catalogs.yaml` loaded by `src/geocr_mcp_server/catalogs.py:21`. Hosts are fixed to `earth-search` and `veda` unless `GEOCR_CATALOGS_CONFIG` points to another file.
+- Geocoding goes to a fixed host `https://nominatim.openstreetmap.org/search` in `src/geocr_mcp_server/geocoding.py:11` with a fixed `User-Agent`.
+- Retry and rate limit logic for STAC is inside `src/geocr_mcp_server/eo.py`. Auth for private STAC is out of scope for the default setup.
+
+If you need signed requests, SAS token rotation, or caching middleware, track that work upstream or propose it as an issue in `https://github.com/HarshShinde0/geocr_mcp/issues`.

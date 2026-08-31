@@ -1,0 +1,82 @@
+---
+title: Authentication and access
+sidebarTitle: Authentication
+---
+
+The GeoCroissant STAC Catalog Registry does not use MCP Registry publishing auth. There are two separate concerns: access to the STAC catalog APIs and access to the raster assets referenced by the catalogs.
+
+## Catalog access
+
+The two registered catalogs are public. No API key is needed.
+
+* `earth-search` at `https://earth-search.aws.element84.com/v1`
+* `veda` at `https://openveda.cloud/api/stac`
+
+`list_eo_catalogs` in `src/geocr_mcp_server/tools.py:61` and `search_eo_datasets` in `src/geocr_mcp_server/tools.py:71` call these endpoints anonymously. The loader in `src/geocr_mcp_server/catalogs.py:39` only validates that each catalog has a `url`. There is no OAuth, no `mcp-publisher login`, and no DNS TXT flow for the catalog registry.
+
+The server does not expose a publish endpoint for catalogs. To add or change a catalog you edit YAML, not JSON. See the FAQ for how to add a private catalog.
+
+## Private catalogs
+
+If you run an internal STAC API, add it to a custom YAML file and point `GEOCR_CATALOGS_CONFIG` at that file. `src/geocr_mcp_server/catalogs.py:21` checks this variable before it reads the packaged file at `src/geocr_mcp_server/config/catalogs.yaml:1`.
+
+Example custom file:
+
+```yaml
+default_catalog: internal
+catalogs:
+  internal:
+    name: Internal STAC
+    url: https://stac.internal.example.com
+    description: Private catalog behind VPN
+    collections:
+      - internal-landsat
+```
+
+Run the server with the override:
+
+```bash
+GEOCR_CATALOGS_CONFIG=/etc/geocr/catalogs.yaml geocr-mcp-server
+```
+
+If your private STAC API itself requires authentication, put that logic in the API gateway, not in the catalog registry. The current tools send unauthenticated GET requests to the catalog URL. To support a header based STAC API, extend `src/geocr_mcp_server/eo.py` to read a token from the environment and attach it to requests.
+
+## Asset access
+
+GeoCroissant documents reference assets by provider native URI. The distribution entries from `create_geocroissant_from_stac` preserve the scheme that the STAC item advertised. Access requirements depend on the scheme.
+
+### s3:// assets
+
+Many earth-search assets are stored on AWS S3 and referenced with `s3://` or `https://` URLs. For `s3://` URIs, use AWS credentials:
+
+* `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` plus `AWS_SESSION_TOKEN` if you use temporary credentials
+* Or an instance profile or IAM role when running on EC2, ECS, or EKS
+
+Tools such as `rasterio`, `gdal`, and `mlcroissant` pass these credentials through to the S3 client. The catalog registry does not store AWS credentials. The validation in `src/geocr_mcp_server/tools.py:588` checks metadata shape, not whether an asset is reachable. It does not test S3 access.
+
+Example to confirm access:
+
+```bash
+aws s3 ls s3://sentinel-cogs/sentinel-s2-l2a-cogs/ --no-sign-request | head
+```
+
+For requester pays buckets, configure your AWS client with `RequestPayer=requester`.
+
+### https:// assets
+
+VEDA and other collections often reference `https://` COG URLs. Some are public and require no auth. Some require a token:
+
+* `https://` with a bearer token - set the token in a request header or in a `.netrc` entry
+* `https://` with a signed URL - the STAC item already contains a time limited URL
+
+Again, validation does not check whether the URL is valid or whether the token is correct. It checks that the GeoCroissant document is well formed. Verify access by fetching the first bytes of the URL with `curl` and the appropriate header.
+
+## No MCP OAuth
+
+The geocr-mcp-server catalog registry has no OAuth server, no JWT, and no `server.json` name verification. If you are looking for how to publish an MCP server to the public MCP Registry, that flow lives outside this project. For geocr-mcp-server itself, auth is limited to the catalog and asset layers described above.
+
+## Best practice
+
+* Keep catalog discovery public and unauthenticated where possible. This lets `count_eo_scenes` and `search_eo_scenes` work from any client.
+* Keep asset credentials out of GeoCroissant JSON-LD. Store them in environment variables or in a secrets manager, and grant them to the process that materializes records with `get_records_preview` or `mlcroissant`.
+* If you need a private catalog, distribute the custom `catalogs.yaml` with your deployment and document the required env var in your run book.

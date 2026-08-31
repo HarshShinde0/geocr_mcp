@@ -1,0 +1,20 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question or request a feature
+    url: https://github.com/HarshShinde0/geocr_mcp/discussions
+    about: >
+      Use discussions for questions about GeoCroissant tools, catalog choice,
+      bbox handling, or dataset configuration.
+
+  - name: Report a bug in the GeoCroissant MCP server
+    url: https://github.com/HarshShinde0/geocr_mcp/issues
+    about: >
+      Server bugs (tools, STAC search, GeoCroissant generation, validation via
+      mlcroissant) belong in the main repository at HarshShinde0/geocr_mcp.
+      Include catalog, collection, bbox, and your endpoint when you file.
+
+  - name: View hosted server endpoint
+    url: https://geocr-mcp-server.onrender.com/mcp
+    about: >
+      The hosted streamable HTTP endpoint. Use http://localhost:8000/mcp for
+      local development with --transport streamable-http.

@@ -1,0 +1,135 @@
+---
+title: CI for the catalog registry
+sidebarTitle: GitHub Actions
+---
+
+The GeoCroissant STAC Catalog Registry does not publish to the public MCP Registry. CI checks that the registry YAML is valid, that live discovery still matches the snapshot, and that GeoCroissant generation keeps working. This page describes the jobs to run on each pull request and on a schedule.
+
+## What CI should do
+
+* Run the Python test suite
+* Validate `src/geocr_mcp_server/config/catalogs.yaml:1` with the loader in `src/geocr_mcp_server/catalogs.py:38`
+* Optionally check live STAC APIs for drift between the snapshot and the provider
+
+No `mcp-publisher` step is needed. The catalog is shipped as package data, not published to `registry.modelcontextprotocol.io`.
+
+## Basic workflow
+
+Create `.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install pyyaml
+
+      - name: Run tests
+        run: |
+          pytest -q
+
+      - name: Validate catalog YAML
+        run: |
+          python -c "from geocr_mcp_server.catalogs import get_config; print(get_config())"
+```
+
+The validation step loads the YAML through `get_config()` which checks that the file is a mapping, that `catalogs` is non empty, that each catalog has a `url`, and that each `collections` list contains unique non empty strings. It also checks that `default_catalog` points at a known id. A failure here fails the job with a clear `ValueError`.
+
+## YAML lint
+
+If you edit the catalog snapshot, add a lint step to catch duplicate ids before Python does:
+
+```yaml
+      - name: Lint YAML
+        run: |
+          pip install yamllint
+          yamllint src/geocr_mcp_server/config/catalogs.yaml
+```
+
+The file uses a plain mapping of catalogs keyed by lowercase id. The loader normalizes ids to lowercase in `src/geocr_mcp_server/catalogs.py:56`, so avoid mixed case keys.
+
+## Live drift check
+
+Providers can add collections before the snapshot is refreshed. A scheduled job can detect drift and open an issue or just log it. The check is read only and hits public STAC APIs.
+
+```yaml
+  drift:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check earth-search snapshot
+        run: |
+          python - << 'PY'
+          import requests, yaml
+          from pathlib import Path
+
+          config = yaml.safe_load(Path("src/geocr_mcp_server/config/catalogs.yaml").read_text())
+          expected = set(config["catalogs"]["earth-search"]["collections"])
+          resp = requests.get("https://earth-search.aws.element84.com/v1/collections", timeout=30)
+          resp.raise_for_status()
+          live = {c["id"] for c in resp.json()["collections"]}
+          print("expected:", sorted(expected))
+          print("live:", sorted(live))
+          if expected != live:
+              print("drift detected: update src/geocr_mcp_server/config/catalogs.yaml:15")
+              raise SystemExit(1)
+          PY
+```
+
+Run this on a schedule, for example weekly, so you see when a new collection appears. For VEDA you may want to treat drift as informational only, since that catalog adds many thematic collections.
+
+```yaml
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+```
+
+## Testing with a custom catalog file
+
+To test a change that adds a new catalog, set `GEOCR_CATALOGS_CONFIG` in the job:
+
+```yaml
+      - name: Test custom catalog file
+        env:
+          GEOCR_CATALOGS_CONFIG: tests/fixtures/custom-catalogs.yaml
+        run: |
+          python -c "from geocr_mcp_server.catalogs import reload_config, get_config; reload_config(); print(get_config()['catalogs'].keys())"
+          pytest -q -k catalog
+```
+
+`reload_config()` in `src/geocr_mcp_server/catalogs.py:89` clears the `lru_cache` so the new file is read. Without it the first load would stay cached.
+
+## What not to do
+
+* Do not add `mcp-publisher publish` or `npm publish` steps for the catalog. The catalog is not an MCP server package.
+* Do not add secrets for `MCP_GITHUB_TOKEN` or `MCP_PRIVATE_KEY`. The STAC APIs are public and need no token.
+* Do not block PRs on VEDA drift. Log it and decide whether to refresh the long snapshot in `src/geocr_mcp_server/config/catalogs.yaml:42`.
+
+## Release checklist
+
+Before you tag a release that updates the catalog:
+
+* Confirm `GET https://earth-search.aws.element84.com/v1/collections` still returns nine collections and matches the list at `src/geocr_mcp_server/config/catalogs.yaml:23`.
+* If you changed `default_catalog` in `src/geocr_mcp_server/config/catalogs.yaml:8`, verify that `get_catalog()` returns the new default when no id is passed.
+* Run `pytest` and the drift check locally so the CI run has no surprises.

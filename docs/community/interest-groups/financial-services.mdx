@@ -1,0 +1,14 @@
+---
+title: "Financial Services Interest Group"
+sidebarTitle: "Financial services"
+---
+
+This group is upstream only as a domain use case. `HarshShinde0/geocr_mcp` has no code for trading, insurance, or ESG workflows. Those workloads can consume GeoCroissant output but they do not shape the server here.
+
+## What this server can provide to that domain
+
+- GeoCroissant datasets from STAC via `create_geocroissant_from_stac` and `create_geocroissant_from_stac_sources` in `src/geocr_mcp_server/tools.py:257` and `400`.
+- Band metadata from `src/geocr_mcp_server/eo.py:311` `_collect_bands` mapped to `geocr:bandConfiguration` and `geocr:spectralBandMetadata` in `src/geocr_mcp_server/spec.py`.
+- Validation via `validate_croissant` in `src/geocr_mcp_server/tools.py:545` which checks structure with `mlcroissant`.
+
+If you build agriculture or risk pipelines on top of this output, keep domain logic outside the server. Track financial services requirements in the upstream Model Context Protocol.

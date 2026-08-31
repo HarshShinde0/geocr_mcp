@@ -1,0 +1,58 @@
+# GeoCroissant docs markdown checks
+# Validates formatting and links for markdown and MDX files in docs/.
+# Mintlify config: docs/docs.json
+
+name: Markdown format check
+
+on:
+  push:
+    paths:
+      - "**/*.md"
+      - "**/*.mdx"
+      - "docs/docs.json"
+  pull_request:
+    paths:
+      - "**/*.md"
+      - "**/*.mdx"
+      - "docs/docs.json"
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install dependencies if present
+        working-directory: docs
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          else
+            echo "No package.json in docs, skip npm install"
+          fi
+
+      - name: Check markdown formatting if configured
+        working-directory: docs
+        run: |
+          if [ -f package.json ]; then
+            npm run check:docs:format --if-present
+          else
+            echo "No package.json, skip format check"
+          fi
+
+      - name: Check markdown links if configured
+        working-directory: docs
+        run: |
+          if [ -f package.json ]; then
+            npm run check:docs:links --if-present
+          else
+            echo "No package.json, skip link check"
+          fi

@@ -1,0 +1,14 @@
+---
+title: "Pagination"
+sidebarTitle: "Pagination"
+---
+
+MCP protocol reference. Pagination for list results uses `cursor`.
+
+For `geocr-mcp-server`:
+
+- `search_eo_datasets` uses `limit` (1 to 500) and `offset`. Results include `count`, `total_catalog_collections`, `truncated` and `next_offset`.
+- `search_eo_scenes` and `create_geocroissant_from_stac` use `limit` (1 to 50). The server caps page size at 25 internally and fetches up to `max_items`.
+- `get_records_preview` uses `limit` (1 to 100) and reports `truncated`.
+
+There is no STAC `next_token` exposed to the caller. STAC paging is handled inside `eo.search_scenes`.

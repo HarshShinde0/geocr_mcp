@@ -1,0 +1,86 @@
+---
+title: Frequently asked questions
+sidebarTitle: FAQ
+---
+
+## Catalog registry
+
+### What is the GeoCroissant STAC Catalog Registry?
+
+It is a small map from catalog id to STAC API endpoint, kept in `src/geocr_mcp_server/config/catalogs.yaml:1`. The loader in `src/geocr_mcp_server/catalogs.py:1` reads it on first use. Today it has two entries: `earth-search` at `https://earth-search.aws.element84.com/v1` and `veda` at `https://openveda.cloud/api/stac`. It exists so MCP tools can list collections, inspect dataset details, count scenes, and generate GeoCroissant without hard coding URLs.
+
+### Why is earth-search the default catalog?
+
+`default_catalog` is set to `earth-search` in `src/geocr_mcp_server/config/catalogs.yaml:8`. It covers the main AWS Open Data EO archive with nine well known collections and it is fast for global queries. When you call `search_eo_datasets` or `search_eo_scenes` without `catalog_id`, the server uses this default. Pass `catalog_id: "veda"` when you want thematic NASA collections.
+
+### How do I add a new catalog?
+
+Create a YAML file with the same shape as `src/geocr_mcp_server/config/catalogs.yaml:1`:
+
+```yaml
+default_catalog: earth-search
+catalogs:
+  earth-search:
+    name: Earth Search (Element84 / AWS Open Data)
+    url: https://earth-search.aws.element84.com/v1
+    description: STAC API over AWS Open Data EO assets.
+    collections:
+      - sentinel-2-c1-l2a
+  my-catalog:
+    name: My STAC
+    url: https://stac.example.com
+    description: Internal archive.
+    collections:
+      - my-collection
+```
+
+Set the environment variable `GEOCR_CATALOGS_CONFIG` to the file path before you start the server:
+
+```bash
+GEOCR_CATALOGS_CONFIG=/etc/geocr/catalogs.yaml geocr-mcp-server
+```
+
+`src/geocr_mcp_server/catalogs.py:21` reads this variable first. Catalog ids are normalized to lowercase in `src/geocr_mcp_server/catalogs.py:56`, so avoid mixed case keys.
+
+### How do I override the catalog list for a deployment without changing code?
+
+Use `GEOCR_CATALOGS_CONFIG` as above. To pick up changes in a running process, call `reload_config()` in `src/geocr_mcp_server/catalogs.py:89`:
+
+```python
+from geocr_mcp_server.catalogs import reload_config
+reload_config()
+```
+
+A process restart also reloads the file. The config is cached after first load with `lru_cache` in `src/geocr_mcp_server/catalogs.py:38`.
+
+### What does the collections list mean if live discovery is the source of truth?
+
+The list is an informational snapshot used for docs and for `list_catalogs()` reporting. The snapshot header in `src/geocr_mcp_server/config/catalogs.yaml:10` shows the audit date for earth-search, 2026-08-23, and the note that `GET https://earth-search.aws.element84.com/v1/collections` returned nine collections. `search_eo_datasets` always queries the live API, so it may show a new collection before the snapshot is refreshed. Treat the live result as authoritative.
+
+### How does pagination work for collection search?
+
+`search_eo_datasets` in `src/geocr_mcp_server/tools.py:71` takes `limit` from 1 to 500 and `offset` from 0. Use 500 to inventory a catalog in one call. Increase `offset` by `limit` to fetch the next page. Stop when `count` is less than `limit`. This is offset based, not cursor based.
+
+### How do I search scenes?
+
+Call `count_eo_scenes` first to verify that data exists for your bbox, then call `search_eo_scenes` with the same args. Both require `bbox` in `[min_lon, min_lat, max_lon, max_lat]` in EPSG:4326 and `collections` as a list of exact collection ids from `search_eo_datasets`. Optionally set `datetime_range` as `YYYY-MM-DD/YYYY-MM-DD` and `max_cloud_cover` for optical collections. See `src/geocr_mcp_server/tools.py:157` and `src/geocr_mcp_server/tools.py:197`.
+
+### When should I use max_cloud_cover?
+
+Only for collections that support `eo:cloud_cover`. Check `get_eo_dataset_details` first and look at `summaries`. Optical collections such as `sentinel-2-c1-l2a`, `landsat-c2-l2`, and `naip` support it. SAR collections such as `sentinel-1-grd` and DEM collections such as `cop-dem-glo-30` do not.
+
+### How do I generate GeoCroissant for a region?
+
+Use `create_geocroissant_from_stac` with the same bbox, collections, and optional time and cloud filters. Optionally set `output_filename` to write the JSON-LD into `GEOCR_OUTPUT_DIR`. The response contains `json_ld`, `asset_urls`, and a validation report. For more than one catalog or collection, use `create_geocroissant_from_stac_sources` with independent `sources` objects.
+
+### How do I use the GeoCroissant after it is generated?
+
+Read it with `mlcroissant`, which the tools already use for validation in `src/geocr_mcp_server/tools.py:588`. Call `list_record_sets` and `get_records_preview` as MCP tools, or load it in Python with `Dataset(jsonld=json_ld)` and iterate `dataset.records(record_set="...")`. For raw asset bytes, call `extract_distribution_urls` and fetch the returned `contentUrl` values with the right credentials for the URI scheme.
+
+### What if a catalog is down?
+
+`search_eo_datasets` and `search_eo_scenes` will raise a `ValueError` or a provider error that the MCP tool surfaces. Catalog health is up to the provider. You can keep working by targeting the other registered catalog, or by adding a fallback catalog through a custom YAML file. There is no server side fallback between catalogs.
+
+### Is the registry validated?
+
+Yes. `get_config()` in `src/geocr_mcp_server/catalogs.py:38` checks that the YAML is a mapping, that `catalogs` is non empty, that each catalog has a `url`, and that each `collections` list has unique non empty strings. It also checks that `default_catalog` points at a known id. A bad file fails fast at startup or at first tool call.

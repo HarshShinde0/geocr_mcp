@@ -1,0 +1,68 @@
+---
+title: "Build with agent skills"
+sidebarTitle: "Build with agent skills"
+---
+
+An agent chains GeoCroissant tools without human steps in between. The server does not have built-in routing; the model chooses the next tool.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent
+    participant Geo as geocr-mcp-server
+    participant STAC as STAC API
+
+    User->>Agent: "Sentinel-2 over Paris, summer 2024, cloud under 20"
+    Agent->>Geo: geocode_place(place_name="Paris, France", limit=5)
+    Geo-->>Agent: candidates with bbox
+    Agent->>Geo: search_eo_datasets(catalog_id="earth-search", limit=15, offset=0)
+    Geo->>STAC: list collections
+    STAC-->>Geo: 9 collections
+    Agent->>Geo: get_eo_dataset_details(collection_id="sentinel-2-c1-l2a", catalog_id="earth-search")
+    Geo-->>Agent: provider metadata
+    Agent->>Geo: count_eo_scenes(bbox=[...], collections=["sentinel-2-c1-l2a"], datetime_range="2024-06-01/2024-08-31", max_cloud_cover=20)
+    Geo->>STAC: search with matched()
+    STAC-->>Geo: total_matched
+    Agent->>Geo: create_geocroissant_from_stac(name="paris-s2-summer-2024", bbox=[...], collections=["sentinel-2-c1-l2a"], limit=5, datetime_range="2024-06-01/2024-08-31", max_cloud_cover=20)
+    Geo-->>Agent: json_ld, asset_urls, validation passed
+    Agent->>Geo: validate_croissant(jsonld_content=json_ld)
+    Geo-->>Agent: valid true
+    Agent->>User: Dataset ready
+```
+
+Keep limits small. `create_geocroissant_from_stac` embeds scenes as inline records, so large `limit` values inflate the response. Use `count_eo_scenes` to decide, then generate with 5 to 10 scenes.
+
+## Python agent with LangChain
+
+```python
+import asyncio
+import json
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+from langchain_mcp_adapters.tools import load_mcp_tools
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+
+async def run_agent():
+    server_params = StdioServerParameters(
+        command="uvx",
+        args=["geocr-mcp-server"]
+    )
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await load_mcp_tools(session)
+            model = ChatOpenAI(model="gpt-4o")
+            agent = create_react_agent(model, tools)
+            response = await agent.ainvoke({
+                "messages": [("user", "Find Sentinel-2 scenes over Lake Tahoe for August 2023 with cloud under 10 and return the scene count.")]
+            })
+            print(response["messages"][-1].content)
+
+if __name__ == "__main__":
+    asyncio.run(run_agent())
+```
+
+The same pattern works with any framework that can call MCP tools. Always confirm collection ids with `search_eo_datasets` before searching scenes.

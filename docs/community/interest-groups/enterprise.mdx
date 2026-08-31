@@ -1,0 +1,14 @@
+---
+title: "Enterprise Interest Group"
+sidebarTitle: "Enterprise"
+---
+
+This group is partly relevant to `HarshShinde0/geocr_mcp`. It gathers needs from teams that run private Earth observation stores.
+
+## Topics tied to this repo
+
+- Private STAC catalogs via `GEOCR_CATALOGS_CONFIG` in `src/geocr_mcp_server/catalogs.py:17`. Point that var at a YAML file that lists your internal catalog `url` and `collections`. The loader in `src/geocr_mcp_server/catalogs.py:39` allows that swap without code changes.
+- Storage URIs such as `s3://`, `https://`, and internal buckets. Generated GeoCroissant keeps `contentUrl` as returned by the catalog in `src/geocr_mcp_server/eo.py:373` and `415`. No proxy is added.
+- Large archives. Scene tools cap `limit` at 50 and collection listing caps at 500. Generation can write to disk with `output_filename` resolved by `src/geocr_mcp_server/common.py:472` to `GEOCR_OUTPUT_DIR`.
+
+This interest group does not own code here. Code stays in `src/geocr_mcp_server/eo.py` and `src/geocr_mcp_server/catalogs.py`. For enterprise data lake patterns beyond STAC, see upstream MCP interest group pages.

@@ -1,0 +1,49 @@
+---
+title: "MCP inspector"
+sidebarTitle: "Inspector overview"
+---
+
+The MCP Inspector is an external tool for testing any MCP server. It is not part of `geocr-mcp-server`. Use it to list tools and try calls without writing a client.
+
+## Launching with GeoCroissant
+
+Stdio:
+
+```bash
+npx @modelcontextprotocol/inspector uvx geocr-mcp-server
+```
+
+Streamable-http:
+
+```bash
+npx @modelcontextprotocol/inspector --transport http --server-url https://geocr-mcp-server.onrender.com/mcp
+```
+
+The inspector starts a web UI, usually at `http://localhost:6274`, and shows tools, request history, and responses.
+
+## What you can check
+
+- Tool schemas for all 17 tools, with parameter names and types as seen in `tools.py`.
+- Try `geocode_place` with `{"place_name": "London, UK", "limit": 5}` or `list_eo_catalogs` with no arguments.
+- Raw JSON-RPC request and response for each `tools/call`.
+- Validation outputs from `validate_croissant` and summaries from `inspect_geocroissant`.
+
+GeoCroissant has no resources or prompts, so the resource and prompt panels remain empty.
+
+<CardGroup cols={2}>
+  <Card title="Web inspector" icon="browser" href="/docs/2026-08-31/tools/inspector/web">
+    Browser UI for manual exploration.
+  </Card>
+
+  <Card title="CLI inspector" icon="terminal" href="/docs/2026-08-31/tools/inspector/cli">
+    Non-interactive checks for CI.
+  </Card>
+
+  <Card title="Configuration" icon="sliders" href="/docs/2026-08-31/tools/inspector/configuration">
+    Ports, environment, and catalog overrides.
+  </Card>
+
+  <Card title="Debugging guide" icon="bug" href="/docs/2026-08-31/tools/debugging">
+    Stdio, bbox, and validation troubleshooting.
+  </Card>
+</CardGroup>

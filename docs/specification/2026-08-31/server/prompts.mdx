@@ -1,0 +1,19 @@
+---
+title: "Server prompts"
+sidebarTitle: "Prompts"
+---
+
+MCP protocol reference. Prompts are parameterized templates that a server can expose via `prompts/list` and `prompts/get`.
+
+`geocr-mcp-server` does not implement prompts. `prompts/list` and `prompts/get` are not available. There is no `generate-eo-dataset` or `audit-croissant-metadata` prompt.
+
+Use tools instead:
+
+- `geocode_place` to resolve a place name to a bbox.
+- `search_eo_datasets` and `get_eo_dataset_details` to inspect collections.
+- `search_eo_scenes` and `count_eo_scenes` to find scenes.
+- `create_geocroissant_from_stac` and `create_geocroissant_from_stac_sources` to generate GeoCroissant.
+- `create_geocroissant_scaffold` to start from parameters without a STAC search.
+- `validate_croissant` and `inspect_geocroissant` to review the result.
+
+If prompts were added, they would follow the standard capability flow with `listChanged` notifications and MRTR input handling.

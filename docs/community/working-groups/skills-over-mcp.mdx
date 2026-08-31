@@ -1,0 +1,19 @@
+---
+title: "Skills Working Group"
+sidebarTitle: "Skills"
+---
+
+This group is GeoCroissant specific. It owns agent skills that ship with the docs at `docs/.mintlify/skills/`.
+
+## Skills in this repo
+
+- `draft-sep` at `docs/.mintlify/skills/draft-sep/SKILL.md`. It guides a proposal for a `geocr:` change with a gate, six questions, research steps, and a draft at `docs/proposals/{slug}.md`.
+- `search-mcp-github` at `docs/.mintlify/skills/search-mcp-github/SKILL.md`. It searches `HarshShinde0/geocr_mcp` issues and pull requests before you draft a new proposal.
+
+Both skills reference 17 tools, `GEOCR_CATALOGS_CONFIG` and `GEOCR_OUTPUT_DIR`, and file paths such as `src/geocr_mcp_server/common.py:472` and `src/geocr_mcp_server/eo.py:311`.
+
+## Relation to upstream
+
+Upstream MCP also has skills. This page covers only the skills stored in this repo. Those skills run through the host that calls the GeoCroissant server. They do not add new MCP behavior on their own.
+
+To add a new skill for GeoCroissant, open an issue or pull request that adds a folder under `docs/.mintlify/skills/` with a `SKILL.md` following the current pattern.

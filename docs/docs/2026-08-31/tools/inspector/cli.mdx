@@ -1,0 +1,48 @@
+---
+title: "CLI inspector"
+sidebarTitle: "CLI"
+---
+
+The CLI runs without a browser. It is the right choice for CI.
+
+## Listing tools
+
+```bash
+npx @modelcontextprotocol/inspector --cli --method tools/list uvx geocr-mcp-server
+```
+
+For a remote server:
+
+```bash
+npx @modelcontextprotocol/inspector --cli --transport http --server-url https://geocr-mcp-server.onrender.com/mcp --method tools/list
+```
+
+## Calling a tool
+
+```bash
+# geocode
+npx @modelcontextprotocol/inspector --cli \
+  --method tools/call --tool-name geocode_place \
+  --tool-args '{"place_name": "London, UK", "limit": 5}' \
+  uvx geocr-mcp-server
+
+# list catalogs
+npx @modelcontextprotocol/inspector --cli \
+  --method tools/call --tool-name list_eo_catalogs \
+  uvx geocr-mcp-server
+
+# count scenes
+npx @modelcontextprotocol/inspector --cli \
+  --method tools/call --tool-name count_eo_scenes \
+  --tool-args '{"bbox": [-122.5, 37.7, -122.3, 37.9], "collections": ["sentinel-2-c1-l2a"]}' \
+  uvx geocr-mcp-server
+```
+
+Add `--format json` for machine-readable output suitable for `jq`.
+
+## CI pattern
+
+```bash
+mcp-inspector --cli --transport http --server-url https://geocr-mcp-server.onrender.com/mcp \
+  --stored-auth-only --method tools/list | jq -e '.tools | length == 17'
+```

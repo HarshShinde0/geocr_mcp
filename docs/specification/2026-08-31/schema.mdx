@@ -1,0 +1,132 @@
+---
+title: "Schema reference"
+sidebarTitle: "Schema"
+---
+
+<div id="enable-section-numbers" />
+
+This page describes the GeoCroissant document that `geocr-mcp-server` generates and validates. It is GeoCroissant only. There is no `geo:`, `eo:` or `raster:` prefix. The canonical context and property names come from `src/geocr_mcp_server/spec.py:17` (`official_context()`) and `src/geocr_mcp_server/reference.py` (`_PROPERTIES` and `_RAI`). Band mapping is in `src/geocr_mcp_server/eo.py:311` and validation is in `src/geocr_mcp_server/common.py:60`.
+
+## JSON-LD context
+
+Every document uses `spec.official_context()`. The value is fixed:
+
+```json
+{
+  "@context": {
+    "@language": "en",
+    "@vocab": "https://schema.org/",
+    "cr": "http://mlcommons.org/croissant/",
+    "dct": "http://purl.org/dc/terms/",
+    "geocr": "http://mlcommons.org/croissant/geo/",
+    "rai": "http://mlcommons.org/croissant/RAI/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "sc": "https://schema.org/",
+    "citeAs": "cr:citeAs",
+    "column": "cr:column",
+    "conformsTo": "dct:conformsTo",
+    "data": { "@id": "cr:data", "@type": "@json" },
+    "dataType": { "@id": "cr:dataType", "@type": "@vocab" },
+    "examples": { "@id": "cr:examples", "@type": "@json" },
+    "extract": "cr:extract",
+    "field": "cr:field",
+    "fileProperty": "cr:fileProperty",
+    "fileObject": "cr:fileObject",
+    "fileSet": "cr:fileSet",
+    "format": "cr:format",
+    "includes": "cr:includes",
+    "isLiveDataset": "cr:isLiveDataset",
+    "jsonPath": "cr:jsonPath",
+    "key": "cr:key",
+    "md5": "cr:md5",
+    "parentField": "cr:parentField",
+    "path": "cr:path",
+    "recordSet": "cr:recordSet",
+    "references": "cr:references",
+    "regex": "cr:regex",
+    "repeated": "cr:repeated",
+    "replace": "cr:replace",
+    "separator": "cr:separator",
+    "source": "cr:source",
+    "subField": "cr:subField",
+    "transform": "cr:transform",
+    "containedIn": { "@id": "cr:containedIn", "@type": "@id" },
+    "isArray": "cr:isArray",
+    "arrayShape": "cr:arrayShape"
+  }
+}
+```
+
+The `@type` of the root object is `Dataset` and `conformsTo` is required.
+
+## Conformance
+
+| Value | When it appears |
+| --- | --- |
+| `http://mlcommons.org/croissant/1.1` | Always |
+| `http://mlcommons.org/croissant/geo/1.0` | Always |
+| `http://mlcommons.org/croissant/RAI/1.0` | When any RAI property is set |
+
+Version string for this specification is `2026-08-31`.
+
+## Dataset
+
+A GeoCroissant dataset has schema.org coverage plus GeoCroissant properties. The server sets `isLiveDataset: true` for STAC-derived documents, because checksums are not known at generation time.
+
+| Property | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `name` | `sc:Text` | Yes | Dataset name, non-empty |
+| `description` | `sc:Text` | No | Free text |
+| `license` | `sc:URL` | No | SPDX URL is recommended |
+| `conformsTo` | `dct:conformsTo` | Yes | List with two or three IRIs as above |
+| `spatialCoverage` | `Place` with `GeoShape` `box` | No | Box is a string `"minLat minLon maxLat maxLon"` (lat first). Input bbox is `[min_lon, min_lat, max_lon, max_lat]` |
+| `temporalCoverage` | `sc:Text` | No | Interval like `2018-01-01/2021-12-31` |
+| `geocr:coordinateReferenceSystem` | `sc:Text` | No | Example `EPSG:4326`. STAC-derived docs use `EPSG:4326` and list native EPSGs in `additionalProperty` |
+| `geocr:spatialResolution` | `QuantitativeValue` | No | `{ "@type": "QuantitativeValue", "value": 30, "unitText": "m" }`. Also allowed on `cr:RecordSet` |
+| `geocr:temporalResolution` | `QuantitativeValue` | No | Same shape, unit like `days`. Also allowed on `cr:RecordSet` |
+| `geocr:bandConfiguration` | `geocr:BandConfiguration` | No | Domain `sc:Dataset` and `cr:Field` |
+| `geocr:spectralBandMetadata` | `geocr:SpectralBand` | No | One entry per band, domain `sc:Dataset` and `cr:Field` |
+| `geocr:recordEndpoint` | `sc:URL` | No | Catalog URL that served the scenes |
+| `geocr:spatialIndex` | `sc:Text` | No | H3, DGGS or geohash tokens, many values |
+| `geocr:spatialBias` | `sc:Text` | No | RAI, geographic limitations |
+| `geocr:samplingStrategy` | `sc:Text` | No | RAI, how samples were selected |
+| `geocr:multiWavelengthConfiguration` | `geocr:MultiWavelengthConfiguration` | No | `channelList` |
+| `geocr:solarInstrumentCharacteristics` | `geocr:SolarInstrumentCharacteristics` | No | `observatory` and `instrument` |
+| `distribution` | `cr:FileObject` | No | One per picked asset, provider-native `contentUrl` |
+| `recordSet` | `cr:RecordSet` | No | STAC-derived docs use `scenes`. Scaffold default is `records` |
+
+### Specialized types
+
+- `geocr:BandConfiguration` has `geocr:totalBands` (integer) and `geocr:bandNamesList` (list of text).
+- `geocr:SpectralBand` has `name` plus `geocr:centerWavelength` (QuantitativeValue, unit `nm`) and optional `geocr:bandwidth`.
+- `geocr:MultiWavelengthConfiguration` has `geocr:channelList`.
+- `geocr:SolarInstrumentCharacteristics` has `geocr:observatory` and `geocr:instrument`.
+- `geocr:timeSeriesIndex` is a field on `cr:RecordSet` that indexes a time series.
+
+## Distribution
+
+`distribution` contains `cr:FileObject` entries only in STAC-derived docs. Each entry has `@id`, `name`, `encodingFormat` and `contentUrl` that preserves the provider href. `contentSize`, `md5` or `sha256` are included when the STAC asset provides them. `cr:FileSet` appears only when a scaffold is built with `file_sets`.
+
+## RecordSet `scenes` (STAC-derived)
+
+The server creates one RecordSet with `@id: "scenes"` and one inline row per scene. Fields are fixed:
+
+| Field id | `dataType` | Notes |
+| --- | --- | --- |
+| `scenes/scene_id` | `sc:Text` | Key of the RecordSet |
+| `scenes/collection` | `sc:Text` | Collection id |
+| `scenes/datetime` | `sc:DateTime` | `properties.datetime` or `start_datetime` |
+| `scenes/cloud_cover` | `sc:Float` | `eo:cloud_cover`, empty string when absent |
+| `scenes/epsg` | `sc:Integer` | Native EPSG or empty string |
+| `scenes/image_url` | `sc:URL` | First picked asset href, carries `geocr:bandConfiguration` when bands exist |
+| `scenes/asset_urls` | `sc:URL` | `isArray: true`, list of picked asset hrefs |
+
+`data` holds the rows. `asset_urls` is the only array field. Multi-source composition creates one RecordSet per source with the same field shape and does not claim alignment across sources.
+
+## RAI properties
+
+RAI properties use `rai:` except `geocr:spatialBias` and `geocr:samplingStrategy`. Full list is in `reference.py` `_RAI`. Examples are `rai:dataCollection`, `rai:dataBiases`, `rai:dataLimitations`, `rai:dataUseCases`, `rai:dataSocialImpact`, `rai:personalSensitiveInformation`, `rai:hasSyntheticData` and `rai:dataPreprocessingProtocol`. Any RAI value adds `http://mlcommons.org/croissant/RAI/1.0` to `conformsTo`.
+
+## Validation
+
+`mlcroissant` validates JSON syntax, JSON-LD expansion, the structure graph (FileObject, FileSet, RecordSet, Field, source, references) and schema conformance. It does not check that `contentUrl` targets exist.

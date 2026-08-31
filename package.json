@@ -1,0 +1,10 @@
+{
+  "name": "@geocroissant/mcp-docs",
+  "private": true,
+  "version": "1.0.0",
+  "description": "GeoCroissant Model Context Protocol documentation and specification site",
+  "scripts": {
+    "serve:docs": "cd docs && npx mint dev",
+    "check:docs": "cd docs && npx mint validate && npx mint broken-links"
+  }
+}

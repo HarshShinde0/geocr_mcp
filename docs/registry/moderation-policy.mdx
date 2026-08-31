@@ -1,0 +1,62 @@
+---
+title: Catalog curation policy
+sidebarTitle: Curation policy
+---
+
+The GeoCroissant STAC Catalog Registry is a small curated map of public STAC APIs, not a marketplace for MCP servers. This policy explains how catalogs are added, kept, or removed. The registry lives in `src/geocr_mcp_server/config/catalogs.yaml:1` and is validated by `src/geocr_mcp_server/catalogs.py:38`.
+
+## Scope
+
+This policy applies to the two built-in catalogs:
+
+* `earth-search` at `https://earth-search.aws.element84.com/v1`
+* `veda` at `https://openveda.cloud/api/stac`
+
+and to any catalog you register through a custom file pointed at by `GEOCR_CATALOGS_CONFIG`. Downstream deployments may add private catalogs. Those private entries are governed by the team that maintains the deployment, not by this repo.
+
+## Principles
+
+* The registry stays small and useful. It lists a catalog when the catalog provides stable STAC collection metadata and public or well documented asset access.
+* The registry does not host data. It points at providers and preserves provider native asset URIs in GeoCroissant.
+* The informational `collections` list in `src/geocr_mcp_server/config/catalogs.yaml:15` is a snapshot. Live discovery via `search_eo_datasets` is the source of truth. A mismatch is not by itself a moderation issue.
+
+## What we curate
+
+We may update the snapshot or remove a catalog when:
+
+* A provider changes its base URL, deprecates a collection, or moves assets to a new location
+* A collection is withdrawn by the provider and `GET {url}/collections` no longer returns it
+* A catalog repeatedly fails or is unreachable and there is no replacement endpoint
+* A collection contains illegal or clearly harmful metadata, for example links to non public private data exposed by mistake
+
+We do not remove a catalog because it overlaps with another catalog, because its collections have coarse resolution, or because its assets require credentials. Overlap is expected. VEDA intentionally contains many thematic collections that overlap in space and time.
+
+## What we do not moderate
+
+* Raster values. The registry points at STAC items. It does not inspect or validate the bytes behind an `s3://` or `https://` URI.
+* Asset liveness. `validate_croissant` checks document shape through `mlcroissant`. It does not check that a COG is still online.
+* Model quality. A GeoCroissant dataset built from a noisy collection is not a registry violation.
+
+## How changes are made
+
+* Updates to the snapshot are proposed as pull requests that edit `src/geocr_mcp_server/config/catalogs.yaml:1`. The PR should include the live response it was audited against, for example `curl -s https://earth-search.aws.element84.com/v1/collections | jq '.collections[].id'`, and note the date.
+* Additions of a new built-in catalog require a public STAC API with a `GET /collections` endpoint that follows the STAC spec. The loader in `src/geocr_mcp_server/catalogs.py:53` checks that each entry has a `url` and that the `collections` list contains unique non empty strings.
+* Removals are handled the same way. The `default_catalog` in `src/geocr_mcp_server/config/catalogs.yaml:8` must always point at an existing id. `get_config()` fails if it does not.
+
+## Custom catalogs and private deployments
+
+You can add a private catalog without touching the built-in file. Create a YAML file with the same shape and set `GEOCR_CATALOGS_CONFIG` to its path. `src/geocr_mcp_server/catalogs.py:21` reads that file first. This is the correct way to register an internal STAC API. Those private catalogs are outside the scope of this policy. The team that runs the deployment is responsible for keeping that file accurate and for restricting network access to the internal URL.
+
+## Reporting an issue
+
+If a catalog entry is wrong or a snapshot is stale, open an issue with:
+
+* The catalog id and URL
+* The output of `search_eo_datasets` with `limit: 500` or a direct `curl` of `{url}/collections`
+* The expected correction to `src/geocr_mcp_server/config/catalogs.yaml:1`
+
+We handle corrections as data fixes, not as takedowns. The `status` field concept from public MCP registries does not apply here.
+
+## Changes to this policy
+
+We keep the policy simple because the registry is small. If the number of built-in catalogs grows, we will add review criteria here and note them in the release notes.

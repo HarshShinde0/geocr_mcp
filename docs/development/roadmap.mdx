@@ -1,0 +1,83 @@
+---
+title: Roadmap
+description: Planned work for the GeoCroissant MCP server, with focus on STAC discovery, GeoCroissant generation from STAC scenes, and validation with mlcroissant.
+---
+
+<Info>Last updated: **2026-08-22**</Info>
+
+This page lists planned work for the GeoCroissant MCP server for the next two quarters. It covers the server code in `src/geocr_mcp_server/*` and the catalog registry in `src/geocr_mcp_server/config/catalogs.yaml` (shipped as `config/catalogs.yaml` package data and overridable with `GEOCR_CATALOGS_CONFIG`).
+
+<Note>
+
+This roadmap reflects current thinking rather than firm commitments. Priorities may shift, some items may be delivered differently than described or deferred, and work not listed here may still be included in the release.
+
+</Note>
+
+## Overview
+
+The server connects STAC APIs to GeoCroissant JSON-LD. Tools in `src/geocr_mcp_server/tools.py` expose discovery (`list_eo_catalogs`, `search_eo_datasets`, `get_eo_dataset_details`, `geocode_place`, `count_eo_scenes`, `search_eo_scenes`) and generation and inspection (`create_geocroissant_from_stac`, `create_geocroissant_from_stac_sources`, `validate_croissant`, `inspect_geocroissant`, `get_structure_graph`, `list_record_sets`, `get_records_preview`, `extract_distribution_urls`, `create_geocroissant_scaffold`, `get_geocroissant_spec_reference`). The FastMCP setup lives in `src/geocr_mcp_server/server.py`.
+
+We prioritize work that improves accuracy of generated metadata, keeps validation aligned with `mlcroissant`, and makes STAC behavior predictable for clients.
+
+## Priority areas
+
+### 1. STAC discovery and catalog registry
+
+Files: `src/geocr_mcp_server/catalogs.py`, `src/geocr_mcp_server/eo.py`, `src/geocr_mcp_server/config/catalogs.yaml`.
+
+Background: `catalogs.py` loads the YAML registry and normalizes catalog entries. `eo.py` uses `pystac-client` to page through collections and count or search scenes.
+
+Planned for this period:
+
+- Pagination and offset handling for `search_eo_datasets` to keep results stable across large catalogs.
+- Validation for bbox, datetime range and max cloud cover before a STAC request is sent. Cloud cover filters apply only when the collection advertises `eo:cloud_cover`.
+- Registry refresh for Earth Search and VEDA collections, with checks against live `GET /collections` responses.
+
+### 2. GeoCroissant generation from STAC
+
+Files: `src/geocr_mcp_server/eo.py` (`geocroissant_from_stac`, `_collect_bands`, `_spectral_entries`, `_pick_asset_urls`, `_item_epsg`), `src/geocr_mcp_server/spec.py`.
+
+Planned for this period:
+
+- Coverage calculation from scene bboxes and timestamps, with CRS set to `EPSG:4326` and native EPSG values kept in `additionalProperty`.
+- Band metadata from `eo:bands` and `raster:bands`, with conversion of center wavelength and bandwidth from micrometers to nanometers for `geocr:spectralBandMetadata`.
+- Distribution entries that preserve provider asset URIs and selected media types, plus one inline record per scene for offline validation.
+- Responsible AI fields (`geocr:spatialBias`, `rai:dataCollection` and related properties) wired through to the generated document.
+
+### 3. Multi-source composition
+
+Files: `src/geocr_mcp_server/composition.py`, `src/geocr_mcp_server/tools.py` (`create_geocroissant_from_stac_sources`).
+
+Planned for this period:
+
+- Independent search per source in `composition.search_sources`, with per-source bbox, collection and optional time and cloud filters.
+- One RecordSet per source, with distinct `recordSet` ids (`scenes_{source_id}`) and provenance fields `source_id` and `catalog_id`.
+- Shared distribution list that prefixes entries by source to avoid id collisions, while `asset_manifest` returns full provider metadata for each asset.
+- Documentation that composition does not claim spatial, temporal or spectral alignment of sources.
+
+### 4. Validation, inspection and records
+
+Files: `src/geocr_mcp_server/tools.py` (`validate_croissant`, `inspect_geocroissant`, `get_structure_graph`, `list_record_sets`, `get_records_preview`, `extract_distribution_urls`), `src/geocr_mcp_server/common.py`, `src/geocr_mcp_server/models.py`.
+
+Planned for this period:
+
+- Metadata validation through `mlcroissant`, with structured errors and warnings and conformance flags for `croissant/1.1` and `geocr`.
+- Structure graph extraction from `mlcroissant` graph nodes and edges, with stable sort for deterministic output.
+- Record listing and preview via `Dataset.records`, with inline `cr:data` support and a limit of 100 rows.
+- Distribution summary that reports content URL, encoding format, size and checksum where available.
+
+### 5. Scaffold and specification reference
+
+Files: `src/geocr_mcp_server/spec.py`, `src/geocr_mcp_server/reference.py`, `src/geocr_mcp_server/tools.py` (`create_geocroissant_scaffold`, `get_geocroissant_spec_reference`).
+
+Planned for this period:
+
+- Scaffold builder that emits context, conformance, spatial and temporal coverage, CRS and band configuration from explicit parameters.
+- Responsible AI options in the scaffold, consistent with generation tools.
+- Spec reference topics (`overview`, `context`, `properties`, `rai`, `example`, `python-api`, `all`) served from `reference.py` for client context.
+
+## Get involved
+
+- Review the registry in `src/geocr_mcp_server/config/catalogs.yaml` and propose additions with live API evidence.
+- Test generation and validation paths in `src/geocr_mcp_server/eo.py` and `src/geocr_mcp_server/composition.py` against real STAC queries at small limits.
+- Report mismatches between generated GeoCroissant and `mlcroissant` validation in `src/geocr_mcp_server/common.py` and `src/geocr_mcp_server/tools.py`.

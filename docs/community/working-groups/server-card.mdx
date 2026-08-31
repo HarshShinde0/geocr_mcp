@@ -1,0 +1,14 @@
+---
+title: "Server Card Working Group"
+sidebarTitle: "Server card"
+---
+
+This group is upstream only. `HarshShinde0/geocr_mcp` does not ship a machine readable server card or capability manifest.
+
+## What this server exposes instead
+
+- Tool descriptions for the 17 tools defined in `src/geocr_mcp_server/tools.py`. Clients read them via MCP listing.
+- The catalog registry at `src/geocr_mcp_server/config/catalogs.yaml` with `earth-search` and `veda`.
+- The `GET /` status handler in `src/geocr_mcp_server/server.py:103` `root_status`.
+
+For server card specs such as supported missions or license tags, follow upstream Model Context Protocol. If a card becomes useful for GeoCroissant, propose it as an issue at `https://github.com/HarshShinde0/geocr_mcp/issues` and reference `community/sep-guidelines.mdx`.

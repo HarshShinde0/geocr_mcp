@@ -1,0 +1,257 @@
+---
+title: "Examples and workflows"
+sidebarTitle: "Examples"
+---
+
+Presented by Rajat Shinde at Responsible Gen-AI for NASA Earthdata 2026 — [responsible-genai.hackweek.io](https://responsible-genai.hackweek.io/) · [Slides](https://docs.google.com/presentation/d/1jKHceEsNqOKvT5ZFxJCzZ8OUhcgs2LDX/edit?slide=id.g3f86c08d9c0_1_2#slide=id.g3f86c08d9c0_1_2) · [Demo](https://github.com/responsible-genai-hackweek/genai-ready-data-geocroissant/blob/main/GeoCroissant-MCP-Demo.md)
+
+This page shows two complete workflows with the actual tool names and parameters from `src/geocr_mcp_server/tools.py`. Bbox values are always `[min_lon, min_lat, max_lon, max_lat]` in EPSG:4326.
+
+## Example 1: Single collection - vineyard monitoring in Bordeaux with Sentinel-2
+
+Prompt: *"Create a GeoCroissant dataset for vineyard health near Bordeaux, France during the 2024 growing season, May to September, cloud cover under 15 percent."*
+
+### Step 1. Resolve the place name
+
+```json
+geocode_place({
+  "place_name": "Bordeaux, France",
+  "limit": 3
+})
+```
+
+Returns candidates with `bbox` and `display_name`. Pick the candidate that covers the vineyards, for example `[-0.64, 44.80, -0.53, 44.91]`.
+
+### Step 2. List available collections
+
+```json
+search_eo_datasets({
+  "catalog_id": "earth-search",
+  "limit": 15,
+  "offset": 0
+})
+```
+
+Scan the returned `collections` for `sentinel-2-l2a`. Use the exact `collection` id from that response in later calls.
+
+### Step 3. Inspect the collection
+
+```json
+get_eo_dataset_details({
+  "collection_id": "sentinel-2-l2a",
+  "catalog_id": "earth-search"
+})
+```
+
+Check `summaries`, `item_asset_keys`, and whether `eo:cloud_cover` is present. This tells you if `max_cloud_cover` will filter on the server.
+
+### Step 4. Count scenes before fetching
+
+```json
+count_eo_scenes({
+  "bbox": [-0.64, 44.80, -0.53, 44.91],
+  "collections": ["sentinel-2-l2a"],
+  "catalog_id": "earth-search",
+  "datetime_range": "2024-05-01/2024-09-30",
+  "max_cloud_cover": 15
+})
+```
+
+Response includes `counts` per collection and `total_matched`. Use this to decide on `limit`.
+
+### Step 5. Preview scenes
+
+```json
+search_eo_scenes({
+  "bbox": [-0.64, 44.80, -0.53, 44.91],
+  "collections": ["sentinel-2-l2a"],
+  "catalog_id": "earth-search",
+  "datetime_range": "2024-05-01/2024-09-30",
+  "max_cloud_cover": 15,
+  "limit": 10
+})
+```
+
+Each scene returns `scene_id`, `datetime`, `platform`, `cloud_cover`, `epsg`, `asset_keys`, and other STAC properties.
+
+### Step 6. Generate GeoCroissant
+
+```json
+create_geocroissant_from_stac({
+  "name": "bordeaux-vineyards-2024",
+  "bbox": [-0.64, 44.80, -0.53, 44.91],
+  "collections": ["sentinel-2-l2a"],
+  "catalog_id": "earth-search",
+  "datetime_range": "2024-05-01/2024-09-30",
+  "max_cloud_cover": 15,
+  "limit": 10,
+  "description": "Sentinel-2 L2A scenes for vineyard monitoring near Bordeaux, May to September 2024.",
+  "license": "https://creativecommons.org/licenses/by/4.0/"
+})
+```
+
+Response contains `json_ld`, `asset_urls`, `asset_count`, `search_summary`, and a `valid` flag from `mlcroissant` validation. Validation checks metadata structure. It does not check that remote assets exist or that you have access.
+
+### Step 7. Validate
+
+```json
+validate_croissant({
+  "jsonld_content": "{ ... generated document ... }"
+})
+```
+
+You can also pass `jsonld_path` or `jsonld_url`. Exactly one of the three is required.
+
+### What the generated JSON-LD looks like
+
+The document uses the server context from `src/geocr_mcp_server/spec.py`:
+
+```json
+{
+  "@context": {
+    "@language": "en",
+    "@vocab": "https://schema.org/",
+    "cr": "http://mlcommons.org/croissant/",
+    "dct": "http://purl.org/dc/terms/",
+    "geocr": "http://mlcommons.org/croissant/geo/",
+    "rai": "http://mlcommons.org/croissant/RAI/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "sc": "https://schema.org/"
+  },
+  "@type": "Dataset",
+  "name": "bordeaux-vineyards-2024",
+  "conformsTo": [
+    "http://mlcommons.org/croissant/1.1",
+    "http://mlcommons.org/croissant/geo/1.0"
+  ],
+  "description": "Sentinel-2 L2A scenes for vineyard monitoring near Bordeaux, May to September 2024.",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "isLiveDataset": true,
+  "spatialCoverage": {
+    "@type": "Place",
+    "geo": {
+      "@type": "GeoShape",
+      "box": "44.8 -0.64 44.91 -0.53"
+    }
+  },
+  "temporalCoverage": "2024-05-15/2024-09-28",
+  "geocr:coordinateReferenceSystem": "EPSG:4326",
+  "geocr:bandConfiguration": {
+    "@type": "geocr:BandConfiguration",
+    "geocr:totalBands": 12,
+    "geocr:bandNamesList": ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B11", "B12"]
+  },
+  "distribution": [
+    {
+      "@type": "cr:FileObject",
+      "@id": "S2A_20240520T103631_B02",
+      "name": "S2A_20240520T103631_B02",
+      "contentUrl": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/T/CJ/2024/5/S2A_31TCJ_20240520_0_L2A/B02.tif",
+      "encodingFormat": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "contentSize": "48219344"
+    }
+  ],
+  "recordSet": [
+    {
+      "@type": "cr:RecordSet",
+      "@id": "scenes",
+      "name": "Scenes",
+      "description": "Earth observation records returned by the selected STAC query.",
+      "key": {"@id": "scenes/scene_id"},
+      "field": [
+        {"@type": "cr:Field", "@id": "scenes/scene_id", "name": "scene_id", "dataType": "sc:Text"},
+        {"@type": "cr:Field", "@id": "scenes/collection", "name": "collection", "dataType": "sc:Text"},
+        {"@type": "cr:Field", "@id": "scenes/datetime", "name": "datetime", "dataType": "sc:DateTime"},
+        {"@type": "cr:Field", "@id": "scenes/cloud_cover", "name": "cloud_cover", "dataType": "sc:Float"},
+        {"@type": "cr:Field", "@id": "scenes/epsg", "name": "epsg", "dataType": "sc:Integer"},
+        {"@type": "cr:Field", "@id": "scenes/image_url", "name": "image_url", "dataType": "sc:URL"},
+        {"@type": "cr:Field", "@id": "scenes/asset_urls", "name": "asset_urls", "dataType": "sc:URL", "isArray": true}
+      ],
+      "data": [
+        {
+          "scenes/scene_id": "S2A_31TCJ_20240520_0_L2A",
+          "scenes/collection": "sentinel-2-l2a",
+          "scenes/datetime": "2024-05-20T10:36:31Z",
+          "scenes/cloud_cover": 8.2,
+          "scenes/epsg": 32631,
+          "scenes/image_url": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/.../B02.tif",
+          "scenes/asset_urls": ["https://sentinel-cogs.s3.us-west-2.amazonaws.com/.../B02.tif", "https://.../B03.tif"]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Notes:
+- `conformsTo` lists Croissant 1.1 and GeoCroissant 1.0. If you pass RAI fields like `data_biases` or `spatial_bias`, the server adds `http://mlcommons.org/croissant/RAI/1.0` as a third entry.
+- `distribution` uses `cr:FileObject` entries with `contentUrl` set to the provider native href. No reprojection or format conversion.
+- `recordSet` id is `scenes`. It has seven fields. The last field `asset_urls` is an array of URLs. `image_url` holds the first asset for convenience.
+- `spatialCoverage.geo.box` stores `"minLat minLon maxLat maxLon"` per spec, even though input bbox is `[minLon, minLat, maxLon, maxLat]`.
+
+### Step 8. Load records with mlcroissant
+
+```python
+from mlcroissant import Dataset
+
+dataset = Dataset(jsonld="bordeaux-vineyards-2024.jsonld")
+print(dataset.metadata.name)
+print(dataset.metadata.conforms_to)
+
+for row in dataset.records(record_set="scenes"):
+    print(row["scenes/scene_id"], row["scenes/datetime"], row["scenes/cloud_cover"])
+```
+
+For tools inside the MCP server, the equivalent is `get_records_preview` with `record_set: "scenes"` and `limit: 5`. Remote `contentUrl` assets require download and credentials. Inline `cr:data` rows do not.
+
+## Example 2: Multi-source composition - Sentinel-2 and Sentinel-1 over the same area
+
+Use `create_geocroissant_from_stac_sources` when you need scenes from more than one catalog or collection. Each entry in `sources` is searched independently. Filters and limits on one source do not affect another. The output keeps one RecordSet per source and does not claim that rasters are aligned or share bands.
+
+```json
+create_geocroissant_from_stac_sources({
+  "name": "bordeaux-multi-sensor-2024",
+  "description": "Sentinel-2 optical and Sentinel-1 SAR scenes near Bordeaux, May to September 2024.",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "sources": [
+    {
+      "source_id": "s2-bordeaux",
+      "catalog_id": "earth-search",
+      "collection_id": "sentinel-2-l2a",
+      "bbox": [-0.64, 44.80, -0.53, 44.91],
+      "datetime_range": "2024-05-01/2024-09-30",
+      "max_cloud_cover": 15,
+      "limit": 8
+    },
+    {
+      "source_id": "s1-bordeaux",
+      "catalog_id": "earth-search",
+      "collection_id": "sentinel-1-grd",
+      "bbox": [-0.64, 44.80, -0.53, 44.91],
+      "datetime_range": "2024-05-01/2024-09-30",
+      "limit": 8
+    }
+  ]
+})
+```
+
+Requirements per source object:
+- `catalog_id` (string, required)
+- `collection_id` (string, required)
+- `bbox` (array of four numbers, required)
+- `source_id` (string, optional, defaults to `source-1`, `source-2`, etc., must be unique if set)
+- `datetime_range` (string like `"2024-05-01/2024-09-30"`, optional)
+- `max_cloud_cover` (number, optional)
+- `limit` (integer 1 to 50, optional, defaults to 5)
+
+Response includes `json_ld` with multiple record sets (`scenes_s2_bordeaux`, `scenes_s1_bordeaux`), `asset_urls`, `assets` manifest, `source_results` with per-source `scene_count`, and `scene_count` total.
+
+```python
+from mlcroissant import Dataset
+
+dataset = Dataset(jsonld="bordeaux-multi-sensor-2024.jsonld")
+for rs in dataset.metadata.record_sets:
+    print(rs.uuid, len(list(dataset.records(record_set=rs.uuid))))
+```
+
+Check available record set ids with `list_record_sets` before calling `get_records_preview`.

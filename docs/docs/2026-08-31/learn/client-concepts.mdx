@@ -1,0 +1,54 @@
+---
+title: "Client concepts"
+sidebarTitle: "Client concepts"
+---
+
+A client runs the GeoCroissant server and calls its 17 tools over JSON-RPC.
+
+## Transports
+
+### Standard I/O
+
+The client launches `geocr-mcp-server` as a child process. Messages flow over stdin and stdout. This is the default when `GEOCR_TRANSPORT` is not set and no cloud port is present.
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp": {
+      "command": "uvx",
+      "args": ["geocr-mcp-server"]
+    }
+  }
+}
+```
+
+### Streamable HTTP
+
+The client connects to an HTTP endpoint. The server is started with `--transport streamable-http --host 127.0.0.1 --port 8000` locally, or `0.0.0.0` with `PORT` set in hosted environments. The root path `/` returns a health check and the MCP endpoint is `/mcp`.
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp": {
+      "url": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+The flag `--transport sse` is also accepted but streamable-http is the hosted default.
+
+## How a client uses the tools
+
+1. After `initialize`, the client fetches the tool list. It passes those signatures to the language model.
+2. A user request names a place, time range, and collection. The model picks tools and supplies real parameters.
+3. A typical sequence:
+   - `geocode_place(place_name="Munich, Germany", limit=5)` returns candidates with `bbox` values like `[11.36, 48.06, 11.72, 48.25]`.
+   - `search_eo_datasets(catalog_id="earth-search", limit=15, offset=0)` then `get_eo_dataset_details(collection_id="sentinel-2-c1-l2a", catalog_id="earth-search")` to inspect title, extent, providers, and item asset keys.
+   - `count_eo_scenes(bbox=[...], collections=["sentinel-2-c1-l2a"], datetime_range="2024-07-01/2024-07-31", max_cloud_cover=20, catalog_id="earth-search")` to check counts before searching.
+   - `search_eo_scenes` with the same bbox and a `limit` between 1 and 50 to fetch scene summaries.
+   - `create_geocroissant_from_stac(name="munich-s2-july", bbox=[...], collections=["sentinel-2-c1-l2a"], datetime_range="2024-07-01/2024-07-31", max_cloud_cover=20, limit=5)` to generate GeoCroissant with inline records.
+4. The client receives `json_ld`, `asset_urls`, and a validation report. If `output_filename` was set, the document is also written under `GEOCR_OUTPUT_DIR` or a temp directory and the path is returned.
+5. For batch work the model calls `create_geocroissant_from_stac_sources` with a `sources` array where each entry has `catalog_id`, `collection_id`, `bbox`, and optional `source_id`, `datetime_range`, `max_cloud_cover`, `limit`.
+
+Bounding boxes are always `[min_lon, min_lat, max_lon, max_lat]` EPSG:4326. Longitudes are -180 to 180, latitudes -90 to 90, and `min_lat <= max_lat`.

@@ -1,0 +1,51 @@
+---
+title: "Protocol eras"
+description: How the Inspector handles legacy versus modern MCP connections
+---
+
+The 2026-08-31 MCP revision changed several parts of the protocol. The Inspector keeps a per-server `protocolEra` of `legacy`, `auto`, or `modern`.
+
+## Era setting
+
+| Era | Behavior |
+| --- | --- |
+| `legacy` | Sends `initialize` directly. No probing. This is the default. |
+| `auto` | Probes `server/discover` first, falls back to `initialize` if the server is not modern. |
+| `modern` | Pins `2026-08-31` exactly. A non-modern server fails. |
+
+Set it in Server Settings in the web UI, or as `protocolEra` in the catalog file. The negotiated era appears in the connection header.
+
+`geocr-mcp-server` runs over standard MCP initialization and works with `legacy`. Use `legacy` unless you are testing modern-specific behavior.
+
+## Logging
+
+- Legacy: `logging/setLevel` is session-scoped. The Logs tab has Set Active Level and a Set button; server emits `notifications/message` after that.
+- Modern: `logging/setLevel` is gone. The client stamps `_meta["io.modelcontextprotocol/logLevel"]` on each request. The Logs tab shows Log Level per Request. Set to Off to omit the key and get no logs.
+
+## Resource subscriptions
+
+- Legacy: `resources/subscribe` and `notifications/resources/updated`.
+- Modern: `subscriptions/listen` with a long-lived stream, confirmed by `notifications/subscriptions/acknowledged`, plus `resourcesListChanged` opt-in.
+
+GeoCroissant has no resources, so this distinction does not affect its tools.
+
+## Tasks
+
+- Legacy: Tasks tab gated on `capabilities.tasks`, with `tasks/list`, `tasks/get`, `tasks/result`, `tasks/cancel`.
+- Modern: Tasks are an extension `io.modelcontextprotocol/tasks`. `tools/call` can return a `CreateTaskResult` and the client polls `tasks/get` only.
+
+## Multi-round tool results
+
+On modern, a tool can return `input_required` with an embedded elicitation, sampling, or `roots/list` request. The Inspector pauses at the pending-request modal for you to answer, then retries `tools/call` under a new id.
+
+## Reproducing locally
+
+The Inspector repository ships composable test servers:
+
+```bash
+git clone https://github.com/modelcontextprotocol/inspector
+cd inspector && npm install && npm run build
+cd clients/web && npm run test-servers:build
+```
+
+Each feature section in the Inspector docs points to a `test-servers/configs/*.json` file that implements that behavior.

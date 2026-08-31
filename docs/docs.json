@@ -1,0 +1,300 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "GeoCroissant",
+  "colors": {
+    "primary": "#059669",
+    "light": "#10B981",
+    "dark": "#047857"
+  },
+  "favicon": "/favicon.svg",
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/HarshShinde0/geocr_mcp"
+      }
+    ]
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "versions": [
+          {
+            "version": "Version 2026-08-31",
+            "pages": [
+              {
+                "group": "Get started",
+                "pages": [
+                  "docs/2026-08-31/getting-started/intro"
+                ]
+              },
+              {
+                "group": "About GeoCroissant MCP",
+                "pages": [
+                  "docs/2026-08-31/learn/architecture",
+                  "docs/2026-08-31/learn/server-concepts",
+                  "docs/2026-08-31/learn/client-concepts",
+                  "docs/2026-08-31/learn/versioning"
+                ]
+              },
+              {
+                "group": "Develop with GeoCroissant",
+                "pages": [
+                  "docs/2026-08-31/develop/connect-local-servers",
+                  "docs/2026-08-31/develop/connect-remote-servers",
+                  "docs/2026-08-31/develop/build-with-agent-skills",
+                  "docs/2026-08-31/develop/build-server",
+                  {
+                    "group": "Clients",
+                    "pages": [
+                      "docs/2026-08-31/develop/build-client",
+                      "docs/2026-08-31/develop/clients/client-best-practices"
+                    ]
+                  },
+                  "docs/2026-08-31/sdk",
+                  {
+                    "group": "Security",
+                    "pages": [
+                      "docs/2026-08-31/tutorials/security/authorization",
+                      "docs/2026-08-31/tutorials/security/security_best_practices"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Developer tools",
+                "pages": [
+                  {
+                    "group": "Inspector",
+                    "pages": [
+                      "docs/2026-08-31/tools/inspector",
+                      "docs/2026-08-31/tools/inspector/web",
+                      "docs/2026-08-31/tools/inspector/cli",
+                      "docs/2026-08-31/tools/inspector/tui",
+                      "docs/2026-08-31/tools/inspector/configuration",
+                      "docs/2026-08-31/tools/inspector/authorization",
+                      "docs/2026-08-31/tools/inspector/protocol-eras",
+                      "docs/2026-08-31/tools/inspector/recipes"
+                    ]
+                  },
+                  "docs/2026-08-31/tools/debugging"
+                ]
+              },
+              {
+                "group": "Examples",
+                "pages": [
+                  "examples"
+                ]
+              }
+            ],
+            "default": true
+          }
+        ]
+      },
+      {
+        "tab": "Specification",
+        "versions": [
+          {
+            "version": "Version 2026-08-31",
+            "pages": [
+              "specification/2026-08-31/index",
+              "specification/2026-08-31/changelog",
+              "specification/2026-08-31/deprecated",
+              "specification/2026-08-31/architecture/index",
+              {
+                "group": "Base Protocol",
+                "pages": [
+                  "specification/2026-08-31/basic/index",
+                  "specification/2026-08-31/basic/versioning",
+                  {
+                    "group": "Message Patterns",
+                    "pages": [
+                      "specification/2026-08-31/basic/patterns/index",
+                      "specification/2026-08-31/basic/patterns/mrtr",
+                      "specification/2026-08-31/basic/patterns/subscriptions",
+                      "specification/2026-08-31/basic/patterns/cancellation",
+                      "specification/2026-08-31/basic/patterns/progress"
+                    ]
+                  },
+                  {
+                    "group": "Transports",
+                    "pages": [
+                      "specification/2026-08-31/basic/transports/index",
+                      "specification/2026-08-31/basic/transports/stdio",
+                      "specification/2026-08-31/basic/transports/streamable-http"
+                    ]
+                  },
+                  {
+                    "group": "Authorization",
+                    "pages": [
+                      "specification/2026-08-31/basic/authorization/index",
+                      "specification/2026-08-31/basic/authorization/authorization-server-discovery",
+                      "specification/2026-08-31/basic/authorization/client-registration",
+                      "specification/2026-08-31/basic/authorization/security-considerations"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Server Features",
+                "pages": [
+                  "specification/2026-08-31/server/index",
+                  "specification/2026-08-31/server/discover",
+                  "specification/2026-08-31/server/prompts",
+                  "specification/2026-08-31/server/resources",
+                  "specification/2026-08-31/server/tools",
+                  {
+                    "group": "Utilities",
+                    "pages": [
+                      "specification/2026-08-31/server/utilities/caching",
+                      "specification/2026-08-31/server/utilities/completion",
+                      "specification/2026-08-31/server/utilities/logging",
+                      "specification/2026-08-31/server/utilities/pagination"
+                    ]
+                  }
+                ]
+              },
+              "specification/2026-08-31/schema"
+            ],
+            "default": true
+          }
+        ]
+      },
+      {
+        "tab": "Catalog registry",
+        "pages": [
+          "registry/about",
+          "registry/quickstart",
+          "registry/faq",
+          {
+            "group": "Catalog configuration",
+            "pages": [
+              "registry/package-types",
+              "registry/remote-servers",
+              "registry/authentication",
+              "registry/versioning",
+              "registry/github-actions",
+              "registry/moderation-policy"
+            ]
+          },
+          {
+            "group": "Consuming the catalog",
+            "pages": [
+              "registry/registry-aggregators"
+            ]
+          },
+          "registry/terms-of-service"
+        ]
+      },
+      {
+        "tab": "Demo",
+        "pages": [
+          "demo"
+        ]
+      },
+      {
+        "tab": "Community",
+        "pages": [
+          {
+            "group": "Get Involved",
+            "pages": [
+              "community/contributing",
+              "community/communication",
+              "community/working-interest-groups",
+              "community/charter-template"
+            ]
+          },
+          {
+            "group": "Shaping the Protocol",
+            "pages": [
+              "development/roadmap",
+              "community/design-principles"
+            ]
+          },
+          {
+            "group": "Governance",
+            "pages": [
+              "community/governance",
+              "community/contributor-ladder",
+              "community/feature-lifecycle",
+              "community/sdk-tiers",
+              "community/security",
+              "community/antitrust"
+            ]
+          },
+          {
+            "group": "Working Group Charters",
+            "pages": [
+              "community/working-groups/agents",
+              "community/working-groups/apps",
+              "community/working-groups/file-uploads",
+              "community/working-groups/inspector-v2",
+              "community/working-groups/interceptors",
+              "community/working-groups/registry",
+              "community/working-groups/sdk",
+              "community/working-groups/server-card",
+              "community/working-groups/skills-over-mcp",
+              "community/working-groups/transports",
+              "community/working-groups/triggers-events"
+            ]
+          },
+          {
+            "group": "Interest Group Charters",
+            "pages": [
+              "community/interest-groups/auth",
+              "community/interest-groups/enterprise",
+              "community/interest-groups/enterprise-managed-authorization",
+              "community/interest-groups/financial-services",
+              "community/interest-groups/primitive-grouping",
+              "community/interest-groups/security",
+              "community/interest-groups/tool-annotations"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/geocr.svg",
+    "dark": "/logo/geocr.svg"
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/HarshShinde0/geocr_mcp"
+    }
+  },
+  "redirects": [
+    {
+      "source": "/clients",
+      "destination": "/docs/2026-08-31/getting-started/intro"
+    },
+    {
+      "source": "/docs/latest",
+      "destination": "/docs/2026-08-31/getting-started/intro",
+      "permanent": false
+    },
+    {
+      "source": "/docs/latest/:slug*",
+      "destination": "/docs/2026-08-31/:slug*",
+      "permanent": false
+    },
+    {
+      "source": "/specification/latest",
+      "destination": "/specification/2026-08-31",
+      "permanent": false
+    },
+    {
+      "source": "/specification/latest/:slug*",
+      "destination": "/specification/2026-08-31/:slug*",
+      "permanent": false
+    }
+  ],
+  "contextual": {
+    "options": [
+      "copy",
+      "view"
+    ]
+  }
+}

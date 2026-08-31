@@ -1,0 +1,26 @@
+---
+title: "Server features"
+sidebarTitle: "Server features"
+---
+
+`geocr-mcp-server` implements server features as tools only. It does not expose resources or prompts. Client features such as roots, sampling and elicitation are documented under [Client](/specification/2026-08-31/client/roots) as protocol reference, but this server does not call them.
+
+<CardGroup cols={2}>
+  <Card title="Tools" icon="wrench" href="/specification/2026-08-31/server/tools">
+    17 tools for EO discovery, geocoding, scaffolds and validation.
+  </Card>
+
+  <Card title="Discovery" icon="magnifying-glass" href="/specification/2026-08-31/server/discover">
+    Server discovery and capability advertisement.
+  </Card>
+
+  <Card title="Resources" icon="database" href="/specification/2026-08-31/server/resources">
+    Not implemented. Use tools instead.
+  </Card>
+
+  <Card title="Prompts" icon="message" href="/specification/2026-08-31/server/prompts">
+    Not implemented. Use tools instead.
+  </Card>
+</CardGroup>
+
+All tool results are validated with `mlcroissant` where a document is produced. The server keeps provider-native `contentUrl` values and does not claim that multi-source RecordSets are aligned.

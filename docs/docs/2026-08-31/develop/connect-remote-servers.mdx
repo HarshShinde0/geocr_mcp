@@ -1,0 +1,70 @@
+---
+title: "Connect remote servers"
+sidebarTitle: "Connect remote servers"
+---
+
+Host `geocr-mcp-server` over streamable-http so many clients can share one instance. The hosted endpoint is `https://geocr-mcp-server.onrender.com/mcp`.
+
+## Running
+
+```bash
+# Local HTTP
+python -m geocr_mcp_server --transport streamable-http --host 127.0.0.1 --port 8000
+
+# Hosted, binds 0.0.0.0 when PORT is set
+python -m geocr_mcp_server --transport streamable-http --host 0.0.0.0 --port 8000
+
+# Docker with streamable-http
+docker run -p 8000:8000 geocr-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000
+```
+
+Endpoints:
+
+- `GET /` health check returning `status`, `server`, `version`, `mcp_endpoint: "/mcp"`. Defined in `src/geocr_mcp_server/server.py:102`.
+- `/mcp` for Streamable HTTP JSON-RPC. Also handles GET for SSE stream.
+
+The flag `--transport sse` also starts an HTTP server but streamable-http is the default in cloud mode. When `PORT` or `RENDER` is set, `src/geocr_mcp_server/server.py:20` switches host to `0.0.0.0` and transport to `streamable-http`.
+
+Environment variables that affect transport:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `FASTMCP_LOG_LEVEL` | `WARNING` | Stderr log level. |
+| `GEOCR_OUTPUT_DIR` | System temp directory | Where `output_filename` is written; basename only. |
+| `GEOCR_CATALOGS_CONFIG` | Bundled YAML | Path to custom catalogs file. |
+| `GEOCR_HOST` | `127.0.0.1` locally; `0.0.0.0` in cloud | Bind host for HTTP. |
+| `GEOCR_PORT` | `8000` | HTTP port. |
+| `GEOCR_TRANSPORT` | `stdio` locally; `streamable-http` in cloud | Transport selection. |
+| `PORT` / `RENDER` | unset | Cloud flags that trigger `0.0.0.0` + `streamable-http`. |
+
+Also note network and file handling: catalog searches, scene requests, geocoding, URL inputs, and remote previews hit their configured services. Limits keep requests small. Files are written inside `GEOCR_OUTPUT_DIR` with basename. Container runs as non-root.
+
+## Client configuration
+
+```json
+{
+  "mcpServers": {
+    "geocr-remote": {
+      "url": "https://geocr-mcp-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+For the hosted endpoint `https://geocr-mcp-server.onrender.com/mcp`, use the client-specific key from the README: VS Code needs `type: "http"`, Cursor needs `url`, Antigravity needs `serverUrl`, OpenCode needs `type: "remote"`, etc.
+
+## Docker
+
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
+EXPOSE 8000
+ENTRYPOINT ["python", "-m", "geocr_mcp_server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+```bash
+docker build -t geocr-mcp:latest .
+docker run -d -p 8000:8000 --name geocr-server geocr-mcp:latest
+```

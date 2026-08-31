@@ -1,0 +1,30 @@
+---
+title: "Project governance"
+sidebarTitle: "Governance"
+---
+
+This page describes how `HarshShinde0/geocr_mcp` is run. It covers GeoCroissant discovery and generation. It does not set rules for the upstream Model Context Protocol. Upstream spec decisions stay with that project.
+
+## Roles
+
+### Core maintainers
+
+Core maintainers review pull requests, approve releases, publish to PyPI, and set the roadmap. They have write access to `HarshShinde0/geocr_mcp`. Membership is listed in `MAINTAINERS.md` at the repo root.
+
+### Working group leads
+
+Leads coordinate small areas such as STAC catalog integration in `src/geocr_mcp_server/catalogs.py`, validation with `mlcroissant`, and docs in `docs/`. Leads do not have separate merge authority. All merges need maintainer approval.
+
+### Contributors
+
+Contributors open issues, fix bugs, add docs, and propose catalogs or properties. Anyone with a GitHub account can contribute.
+
+## Decision process
+
+- Regular changes need one maintainer approval and green CI. CI runs tests under `tests/` and formatting checks with `ruff`.
+- Changes that affect GeoCroissant output, `geocr:` properties, tool signatures, or STAC behavior need extra review. That includes `src/geocr_mcp_server/eo.py`, `src/geocr_mcp_server/spec.py`, and tool definitions in `src/geocr_mcp_server/tools.py`. A small prototype or test update is often required before approval.
+- Proposals that would create new `geocr:` terms or alter bbox or band handling follow `community/sep-guidelines.mdx` and the `draft-sep` skill in `docs/.mintlify/skills/draft-sep/SKILL.md`.
+
+## Releases
+
+Releases use SemVer 2.0.0. The version is in `pyproject.toml` and `src/geocr_mcp_server/__init__.py`. Docs for GeoCroissant do not create a separate spec authority. The source of truth for `geocr:` terms is the code and the spec pages linked from `docs/specification/`.

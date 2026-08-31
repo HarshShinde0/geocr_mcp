@@ -1,0 +1,51 @@
+---
+title: "Build server"
+sidebarTitle: "Build server"
+---
+
+`geocr-mcp-server` is built with FastMCP. The entry point is `src/geocr_mcp_server/server.py` which creates `FastMCP('geocr-mcp-server')` and registers tools from `GeoCroissantTools.register`.
+
+## Layout
+
+```
+src/geocr_mcp_server/
+├── server.py              # FastMCP app, CLI, / and /mcp routes
+├── tools.py               # 17 tool definitions and validation wrappers
+├── eo.py                  # STAC via pystac-client, geocroissant_from_stac
+├── catalogs.py            # YAML registry for earth-search and veda
+├── config/catalogs.yaml   # default catalog and 9 earth-search ids
+├── geocoding.py           # Nominatim lookup for geocode_place
+├── spec.py                # official_context and scaffold builder
+├── composition.py         # multi-source search and compose
+├── common.py              # mlcroissant wrappers, output path handling
+├── reference.py           # spec reference topics
+└── models.py              # Pydantic response models
+```
+
+Transport is chosen in `server.main()`: `GEOCR_TRANSPORT` overrides, otherwise `streamable-http` when `PORT` or `RENDER` is set, else `stdio`. Host and port come from `GEOCR_HOST`, `GEOCR_PORT`, and `PORT`. Dependencies are `mlcroissant`, `mcp`, `pydantic`, `loguru`.
+
+## Adding a custom tool
+
+Register a method on a `GeoCroissantTools` subclass or add to `register`. Use typed `Annotated` parameters so FastMCP generates correct JSON Schema.
+
+```python
+from typing import Annotated
+from pydantic import Field
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("geocr-mcp-server")
+
+@mcp.tool(name="calculate_mean_ndvi")
+async def calculate_mean_ndvi(
+    red_band_url: Annotated[str, Field(description="Red band URL")],
+    nir_band_url: Annotated[str, Field(description="NIR band URL")],
+) -> dict:
+    """Calculates mean NDVI from two asset URLs."""
+    return {"red": red_band_url, "nir": nir_band_url, "mean_ndvi": 0.68}
+```
+
+Run with `python -m geocr_mcp_server --transport stdio` or `--transport streamable-http --host 127.0.0.1 --port 8000`.
+
+## Catalog registry
+
+Edit `config/catalogs.yaml` or set `GEOCR_CATALOGS_CONFIG` to an alternate YAML file, then call `reload_config()` or restart. The config must define a `catalogs` mapping with `url` per catalog and a `default_catalog` that exists in that mapping.

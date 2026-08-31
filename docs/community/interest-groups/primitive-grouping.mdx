@@ -1,0 +1,16 @@
+---
+title: "Primitive Grouping Interest Group"
+sidebarTitle: "Primitive grouping"
+---
+
+This group is upstream only. `HarshShinde0/geocr_mcp` exposes tools. It does not expose resource URI primitives.
+
+## How this repo groups its tools
+
+- Discovery: `list_eo_catalogs`, `search_eo_datasets`, `get_eo_dataset_details` in `src/geocr_mcp_server/tools.py:61`, `71`, `109`.
+- Spatial: `geocode_place` at `src/geocr_mcp_server/tools.py:139` with backing code at `src/geocr_mcp_server/geocoding.py:11`.
+- Scene work: `count_eo_scenes`, `search_eo_scenes` at `src/geocr_mcp_server/tools.py:157`, `197` with bbox handling at `src/geocr_mcp_server/eo.py:127`.
+- Generation: `create_geocroissant_from_stac`, `create_geocroissant_from_stac_sources`, `create_geocroissant_scaffold` at `src/geocr_mcp_server/tools.py:257`, `400`, `942`.
+- Validation and inspection: `validate_croissant`, `inspect_geocroissant`, `get_structure_graph`, `list_record_sets`, `get_records_preview`, `extract_distribution_urls`, `get_geocroissant_spec_reference` at `src/geocr_mcp_server/tools.py:545`, `631`, `681`, `751`, `798`, `890`, `1189`.
+
+Namespaced URIs such as `stac://catalogs` or `geocr://schemas/v1.0` are not implemented here. The server is called through tool calls, not resource reads. For primitive grouping specs, see upstream Model Context Protocol.

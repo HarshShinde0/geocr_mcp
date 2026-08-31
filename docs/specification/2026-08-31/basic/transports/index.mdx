@@ -1,0 +1,32 @@
+---
+title: Overview
+---
+
+<div id="enable-section-numbers" />
+
+This page defines what a transport does in MCP and which bindings `geocr-mcp-server` uses.
+
+Protocol semantics are the same on every transport. A transport defines how messages are framed, how metadata is carried and how cancellation is signaled. It does not change what the messages mean.
+
+`geocr-mcp-server` implements two bindings:
+
+1. [stdio](/specification/2026-08-31/basic/transports/stdio): newline delimited JSON-RPC over the standard streams of a client launched subprocess.
+2. [Streamable HTTP](/specification/2026-08-31/basic/transports/streamable-http): each message is a POST to `POST /mcp` at `https://geocr-mcp-server.onrender.com/mcp` with `MCP-Protocol-Version` and `Mcp-Method` headers. Replies are JSON or a request scoped SSE stream.
+
+Custom transports that run over a reliable bidirectional byte stream should reuse the stdio framing. Only process lifecycle rules are specific to stdio.
+
+## Messages
+
+MCP uses JSON-RPC and messages must be UTF-8 encoded. Clients send requests and notifications. Servers send responses and notifications scoped to a request. Servers do not initiate requests except through the MRTR `InputRequiredResult` pattern.
+
+## Request metadata
+
+All metadata is in the body under `_meta.io.modelcontextprotocol/*`. Streamable HTTP mirrors the version and method into headers so intermediaries can route without parsing the body. The body is the source of truth. A mismatch is rejected with `400 Bad Request`.
+
+## Cancellation
+
+On stdio the client sends `notifications/cancelled`. On streamable HTTP the client closes the response stream. See [Cancellation](/specification/2026-08-31/basic/patterns/cancellation).
+
+## Backward compatibility
+
+Earlier revisions used an `initialize` handshake and a `GET /sse` endpoint. `geocr-mcp-server` does not implement them. Clients that support both eras probe with `server/discover` and fall back only when the server does not respond with a modern error.

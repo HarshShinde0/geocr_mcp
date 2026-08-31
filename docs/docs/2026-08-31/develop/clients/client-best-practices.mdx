@@ -1,0 +1,35 @@
+---
+title: "Client best practices"
+sidebarTitle: "Client best practices"
+---
+
+These practices keep responses small and predictable.
+
+## Count before searching
+
+Call `count_eo_scenes` first. If `total_matched` is above 50, narrow the bbox, shorten `datetime_range`, or lower `max_cloud_cover` before calling `search_eo_scenes` or generation.
+
+## Bbox handling
+
+All bboxes are `[min_lon, min_lat, max_lon, max_lat]` EPSG:4326. Longitudes -180 to 180, latitudes -90 to 90, `min_lat <= max_lat`. Validate on the client before sending. Use `geocode_place` when the user gives a place name and let them pick among candidates.
+
+## Paging collections
+
+`search_eo_datasets` uses `limit` 1 to 500 and `offset`. Start with `limit: 15, offset: 0` and follow `next_offset` and `truncated` to page.
+
+## Limits
+
+- `search_eo_scenes`: `limit` 1 to 50, default 10.
+- `create_geocroissant_from_stac`: `limit` 1 to 50, default 5. Each scene adds a FileObject and a row, so keep it low for interactive use.
+- `geocode_place`: `limit` 1 to 10, default 5.
+- `get_records_preview`: `limit` 1 to 100, default 5.
+
+## Token budgets
+
+- Prefer `inspect_geocroissant` or `list_record_sets` for schema checks; they return summaries, not full JSON-LD.
+- Pass `output_filename` to generation tools to write the document to `GEOCR_OUTPUT_DIR` or temp and return only the path and `asset_urls`. Avoid returning large `json_ld` in chat when not needed.
+- For multi-catalog work use `create_geocroissant_from_stac_sources` with one small `limit` per source.
+
+## Catalog choice
+
+Default catalog is `earth-search`. Pass `catalog_id: "veda"` only when you intend to query VEDA collections. Confirm ids with `get_eo_dataset_details` before searching scenes.

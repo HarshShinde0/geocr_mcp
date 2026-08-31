@@ -1,0 +1,16 @@
+---
+title: "Server resources"
+sidebarTitle: "Resources"
+---
+
+MCP protocol reference. Resources expose context documents via `resources/list`, `resources/read` and `resources/templates/list`.
+
+`geocr-mcp-server` does not implement resources. There is no `stac://catalogs`, `geocr://schemas/v1.0` or `geocr://spec` URI. No `resources/list` or `resources/read` method is exposed.
+
+Use tools instead:
+
+- `list_eo_catalogs` returns the registered STAC catalogs.
+- `get_geocroissant_spec_reference` returns the spec text for topics `overview`, `context`, `properties`, `rai`, `example`, `python-api` and `all`.
+- `extract_distribution_urls` lists `contentUrl` values from a document.
+
+The context returned by `get_geocroissant_spec_reference` topic `context` is the exact JSON from `spec.official_context()` with `geocr` and `rai`, not `geo:`, `eo:` or `raster:`.

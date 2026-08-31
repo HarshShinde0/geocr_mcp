@@ -1,0 +1,17 @@
+---
+title: "Specification changelog"
+sidebarTitle: "Changelog"
+---
+
+All changes for `2026-08-31` are listed here. This is the current version.
+
+## Version 2026-08-31
+
+- Specification version is `2026-08-31` and conformance is `http://mlcommons.org/croissant/1.1` plus `http://mlcommons.org/croissant/geo/1.0`, with `http://mlcommons.org/croissant/RAI/1.0` when RAI properties are set.
+- Context is fixed to `spec.official_context()` with prefixes `cr`, `dct`, `geocr`, `rai`, `prov`, `sc`. No `geo:`, `eo:` or `raster:` prefixes are used.
+- STAC to GeoCroissant mapping is defined in `src/geocr_mcp_server/eo.py`. Distribution is `cr:FileObject` entries with provider-native `contentUrl`. RecordSet `scenes` has seven fields `scene_id`, `collection`, `datetime`, `cloud_cover`, `epsg`, `image_url`, `asset_urls`. `asset_urls` is the only array field.
+- Spatial coverage uses `Place` with `GeoShape` `box` as `"minLat minLon maxLat maxLon"`. Input bbox is `[min_lon, min_lat, max_lon, max_lat]`.
+- Scaffold generation is defined in `src/geocr_mcp_server/spec.py` with `build_scaffold` and `official_context`.
+- Property tables in `src/geocr_mcp_server/reference.py` are the source for `geocr:` properties and RAI catalog.
+- Server exposes 17 tools. See `src/geocr_mcp_server/tools.py` and `server/tools.mdx`. No resources or prompts are exposed.
+- Transports are `stdio` and `streamable-http` at `/mcp`. Cloud mode uses `PORT` or `RENDER` to select `streamable-http` and binds to `0.0.0.0`.

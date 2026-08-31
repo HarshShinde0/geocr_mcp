@@ -1,0 +1,43 @@
+---
+title: "Inspector configuration"
+sidebarTitle: "Configuration"
+---
+
+## Ports and binding
+
+```bash
+# Web UI on 3030
+PORT=3030 npx @modelcontextprotocol/inspector uvx geocr-mcp-server
+```
+
+The server itself uses `GEOCR_PORT` or `PORT` for its HTTP port and `GEOCR_HOST` for host.
+
+## Environment for the GeoCroissant server
+
+Pass overrides before the server command:
+
+```bash
+GEOCR_CATALOGS_CONFIG=/path/to/catalogs.yaml \
+GEOCR_OUTPUT_DIR=/tmp/geocr \
+FASTMCP_LOG_LEVEL=INFO \
+npx @modelcontextprotocol/inspector uvx geocr-mcp-server
+```
+
+`GEOCR_CATALOGS_CONFIG` points to an alternate YAML registry. `GEOCR_OUTPUT_DIR` controls where `output_filename` writes go. Logs go to stderr in any case.
+
+## Catalog vs. config file
+
+- `--catalog mcp.json` is a writable server list. The Inspector creates it if missing.
+- `--config mcp.json` is read-only and must already exist.
+
+Default catalog is `~/.mcp-inspector/mcp.json`.
+
+## Ad-hoc targets
+
+Anything positional after flags is the stdio command:
+
+```bash
+mcp-inspector -e API_KEY=abc --cwd ~/projects/my-server uvx geocr-mcp-server
+```
+
+`stderr` from the server appears in the Console tab of the web UI or the Console panel of the TUI.

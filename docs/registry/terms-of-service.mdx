@@ -1,0 +1,42 @@
+---
+title: Terms of service
+sidebarTitle: Terms of service
+---
+
+Effective date: 2026-08-23
+
+These terms govern use of the GeoCroissant STAC Catalog Registry as shipped in `geocr-mcp-server` and configured in `src/geocr_mcp_server/config/catalogs.yaml:1`. The registry points at public STAC APIs and builds GeoCroissant metadata that references provider assets. The registry does not host raster data.
+
+## For all users
+
+1. No warranties. The registry, the snapshot lists in `src/geocr_mcp_server/config/catalogs.yaml:15`, and the live discovery responses are provided as is. We do not guarantee availability, completeness, or freshness. Live STAC providers may change collections or asset locations without notice. Verify `get_eo_dataset_details` output and provider documentation before you rely on a dataset for production work.
+
+2. Public STAC APIs. The built-in catalogs are `earth-search` at `https://earth-search.aws.element84.com/v1` and `veda` at `https://openveda.cloud/api/stac`. Both are public HTTPS services. Their use is subject to the provider's own terms, rate limits, and docs. We do not set those terms. Check Element84 and NASA VEDA documentation for usage and attribution guidance.
+
+3. Provider terms still apply to assets. GeoCroissant documents preserve provider native URIs under `distribution` with `contentUrl`. Access to those URIs may require provider credentials based on the scheme, for example `s3://` with AWS credentials or `https://` with a signed URL. Any asset you fetch remains governed by the provider license and access rules. The registry cannot grant or revoke access to provider buckets.
+
+4. Eligibility and lawful use. You must be able to form a binding contract to use the registry and you must comply with applicable law in your jurisdiction. Do not use the registry or the STAC APIs to violate third party rights or to promote unlawful activity. Do not attempt to bypass provider access controls on asset buckets.
+
+5. No personal data in the registry. The built-in YAML file contains catalog names, URLs, and collection ids. It does not contain personal data. If you add a private catalog via `GEOCR_CATALOGS_CONFIG`, you are responsible for any data you put in that file and for restricting access to internal URLs.
+
+6. Branding. You may say that your dataset was built with geocr-mcp-server or that it points at Earth Search or VEDA, but do not imply that Element84, NASA, or VEDA endorse your derived product unless you have permission.
+
+7. Modifications. We may modify these terms and the catalog snapshot in `src/geocr_mcp_server/config/catalogs.yaml:1`. Changes that add or remove a catalog or change `default_catalog` will appear in the release notes. Continued use after a change means you accept the new terms.
+
+## For dataset builders
+
+8. Do not abuse providers. The catalog registry queries STAC APIs with `GET /collections` and `GET /search` through `search_eo_datasets`, `count_eo_scenes`, and `search_eo_scenes` in `src/geocr_mcp_server/tools.py:61`. Keep `limit` reasonable for interactive use, and use `count_eo_scenes` before broad scene searches. Respect provider rate limits and caching headers. Downstream consumers should cache catalog lists and collection metadata for the session rather than poll on every call.
+
+9. Attribution. When you publish a derived GeoCroissant dataset, include the catalog URL, collection id, bbox in `[min_lon, min_lat, max_lon, max_lat]`, and `datetime_range` that you used. This matches the `search_summary` returned by `create_geocroissant_from_stac` and makes the dataset reproducible. Cite the upstream collection provider as described in provider docs.
+
+10. License of metadata. Collection metadata returned by STAC APIs and the snapshot in `src/geocr_mcp_server/config/catalogs.yaml:1` is factual and provided for discovery. Your GeoCroissant JSON-LD is your own work product, but it references provider assets that may have separate licenses. The `license` field you pass to `create_geocroissant_from_stac` should reflect the terms that apply to your derived metadata and any redistribution rights you have for the underlying assets.
+
+## For operators
+
+11. Private catalogs. If you set `GEOCR_CATALOGS_CONFIG` to a custom YAML file as in `src/geocr_mcp_server/catalogs.py:21`, you are responsible for keeping that file accurate, for securing internal catalog URLs, and for ensuring that any additional auth you need for those catalogs is handled in your gateway. The validation in `src/geocr_mcp_server/catalogs.py:38` checks shape, not network reachability.
+
+12. Remote server. When you run `geocr-mcp-server` with `GEOCR_TRANSPORT=streamable-http` as in `src/geocr_mcp_server/server.py:122`, the health endpoint at `GET /` and the MCP endpoint at `/mcp` are public on the bind host. Put the process behind a reverse proxy with TLS and apply network controls. The registry itself does not add MCP OAuth.
+
+## Disclaimer and liability
+
+The registry is a community maintained map. We have limited capacity to monitor provider changes in real time. Use the registry as a discovery aid and always re validate with live calls to `search_eo_datasets` and `get_eo_dataset_details` before you generate a dataset you will publish. To the extent permitted by law, the registry is provided without liability for indirect or consequential damages arising from use of catalog data or derived datasets.

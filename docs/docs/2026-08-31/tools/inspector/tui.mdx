@@ -1,0 +1,53 @@
+---
+title: "TUI client"
+description: "The terminal MCP Inspector: navigation, tabs, and keyboard reference"
+---
+
+The TUI is the Inspector for the terminal. It has the same tool and protocol views as the web UI.
+
+```bash
+npx @modelcontextprotocol/inspector --tui uvx geocr-mcp-server
+```
+
+## Choosing servers
+
+```bash
+mcp-inspector --tui --catalog mcp.json
+mcp-inspector --tui --config mcp.json
+```
+
+With neither flag and no ad-hoc target, it uses `~/.mcp-inspector/mcp.json`. `--catalog` is writable and is created if missing; `--config` is read-only.
+
+## Tabs
+
+| Tab | Key | Contents |
+| --- | --- | --- |
+| Info | `i` | Server info and negotiated details |
+| Auth | `a` | OAuth state, clear action |
+| Resources | `r` | Empty for GeoCroissant, which exposes none |
+| Prompts | `m` | Empty for GeoCroissant, which exposes none |
+| Tools | `t` | 17 tools with schemas and run form |
+| Protocol | `p` | JSON-RPC history |
+| Network | `n` | HTTP traffic for streamable-http |
+| Console | `o` | `stderr` from stdio server |
+
+## Keys
+
+| Key | Action |
+| --- | --- |
+| Left, Right or Tab | Switch tabs |
+| Up, Down | Move in list |
+| Enter | Select, run tool, or fetch resource |
+| `c` | Connect |
+| `d` | Disconnect |
+| Esc or Ctrl+C | Exit |
+
+## Authorization
+
+Select an HTTP server and press `c`. If the server requires auth, the TUI opens the authorization URL. The callback listener is `http://127.0.0.1:6276/oauth/callback` by default. Override with `--callback-url` or `MCP_OAUTH_CALLBACK_URL`. Only one flow can hold the default port at a time; a second fails with `EADDRINUSE`.
+
+`geocr-mcp-server` itself has no OAuth. This flow applies only when you front it with a protected endpoint.
+
+## Requirements
+
+The TUI needs a real TTY with raw-mode support. Use the CLI for headless CI.

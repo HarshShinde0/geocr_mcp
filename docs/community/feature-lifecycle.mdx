@@ -1,0 +1,32 @@
+---
+title: "Feature lifecycle"
+sidebarTitle: "Feature lifecycle"
+---
+
+This lifecycle applies to tools, `geocr:` JSON-LD terms, and behavior in `HarshShinde0/geocr_mcp`. It does not govern the upstream Model Context Protocol.
+
+The server has 17 tools, defined in `src/geocr_mcp_server/tools.py`. Two catalogs are configured in `src/geocr_mcp_server/config/catalogs.yaml`: `earth-search` and `veda`. GeoCroissant terms are set in `src/geocr_mcp_server/spec.py`.
+
+## Stages
+
+### Experimental
+
+A new tool, catalog entry, or property ships for early use. Tests exist but API shape may change in the next minor release. Docs mark it as experimental.
+
+### Stable
+
+The feature has tests, docs, and validation coverage with `mlcroissant`. It follows SemVer. A breaking change needs a major version bump.
+
+### Deprecated
+
+A stable feature has a replacement. Calls still work but include a warning in the response or release notes. The deprecation note lists the removal target and the migration.
+
+### Removed
+
+The feature is gone from code and docs. The changelog notes the removal and the version where it took effect. Assets such as `s3://` or `https://` `contentUrl` values from old datasets remain provider native. They do not change when code is removed.
+
+## How changes move between stages
+
+- Experimental to stable needs passing CI, docs, and maintainer approval per `community/governance.mdx`.
+- Stable to deprecated needs a migration note and a timeline that spans at least one minor release before removal.
+- Any `geocr:` term change or bbox or band handling change follows `community/sep-guidelines.mdx` and the `draft-sep` skill at `docs/.mintlify/skills/draft-sep/SKILL.md`.

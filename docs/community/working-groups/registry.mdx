@@ -1,0 +1,15 @@
+---
+title: "Registry Working Group"
+sidebarTitle: "Registry"
+---
+
+This group is GeoCroissant specific. It owns the STAC catalog registry that the server reads at startup.
+
+## Scope
+
+- Registry file at `src/geocr_mcp_server/config/catalogs.yaml`. It lists `earth-search` at `https://earth-search.aws.element84.com/v1` and `veda` at `https://openveda.cloud/api/stac`. `earth-search` holds nine collections such as `sentinel-2-c1-l2a` and `landsat-c2-l2`. The veda snapshot is noted as 2026-08-23 in that file.
+- Loader at `src/geocr_mcp_server/catalogs.py:39` `get_config` with cache and `reload_config`. An alternate file can be set with `GEOCR_CATALOGS_CONFIG`. The loader checks that `catalogs` is a non empty mapping and each entry has a `url`.
+- List helper at `src/geocr_mcp_server/catalogs.py:107` `list_catalogs` and discovery in `src/geocr_mcp_server/eo.py:48` `search_collections`. Discovery is live via `pystac-client`, not from a hard coded registry dump.
+- Tool `list_eo_catalogs` in `src/geocr_mcp_server/tools.py:61` exposes the registry to clients.
+
+This is not the upstream MCP registry. For prebuilt GeoCroissant datasets, no index is shipped. Generation from STAC sources is the path via `create_geocroissant_from_stac` and `create_geocroissant_from_stac_sources`.

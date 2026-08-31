@@ -1,0 +1,14 @@
+---
+title: "Enterprise Managed Authorization"
+sidebarTitle: "Managed auth"
+---
+
+This group is upstream only. `HarshShinde0/geocr_mcp` has no role based access control, identity provider wiring, or per user scoping.
+
+## What exists here
+
+- The server has no auth gate per tool. All 17 tools in `src/geocr_mcp_server/tools.py` are available to any connected MCP client.
+- File writes are limited by `src/geocr_mcp_server/common.py:472` `secure_output_path` which keeps the basename and stays inside `GEOCR_OUTPUT_DIR`. That is a directory isolation rule, not a user RBAC rule.
+- A custom catalog file can be swapped via `GEOCR_CATALOGS_CONFIG` in `src/geocr_mcp_server/catalogs.py:17`. That env var is host level, not per user.
+
+If you need role scoping such as read only catalog browse versus full export, enforce it in the host or gateway that sits in front of this server. Track enterprise auth specs in the upstream Model Context Protocol.

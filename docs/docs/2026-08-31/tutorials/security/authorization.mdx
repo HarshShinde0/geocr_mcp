@@ -1,0 +1,36 @@
+---
+title: "Authorization"
+sidebarTitle: "Authorization"
+---
+
+`geocr-mcp-server` serves public STAC catalogs without auth. Both `earth-search` and `veda` are open. Collection discovery and scene search need no tokens.
+
+## When auth is needed
+
+If you place the server behind a private HTTP endpoint or use a custom catalog that requires a key, put the check in the HTTP layer in front of the server, not in the MCP tools. The Inspector's OAuth flow then handles it as described in the inspector authorization page.
+
+Provider asset URLs may still need credentials at read time. `search_eo_scenes` and generation tools return provider-native `contentUrl` values; some are `s3://` or requester-pays S3 paths. Access depends on the provider. The server never injects tokens into the generated GeoCroissant; it preserves what the STAC item gives.
+
+## Passing environment to a local server
+
+If you do add a custom catalog that reads a token from the environment, pass it via the MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp": {
+      "command": "uvx",
+      "args": ["geocr-mcp-server"],
+      "env": {
+        "GEOCR_CATALOGS_CONFIG": "/path/to/catalogs.yaml"
+      }
+    }
+  }
+}
+```
+
+Custom catalog YAML is pointed to by `GEOCR_CATALOGS_CONFIG`. Restart the server after changing it.
+
+## Output handling
+
+Do not store secrets in `contentUrl`. If an asset URL is signed, it will expire. Keep secrets out of `json_ld` and `output_filename` documents.

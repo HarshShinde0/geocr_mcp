@@ -1,0 +1,14 @@
+---
+title: "Triggers & Events Working Group"
+sidebarTitle: "Triggers & events"
+---
+
+This group is upstream only. `HarshShinde0/geocr_mcp` is a request response server. It has no trigger or event feed.
+
+## What the server has
+
+- 17 tools that run on demand such as `count_eo_scenes`, `search_eo_scenes`, `create_geocroissant_from_stac`, and `validate_croissant` in `src/geocr_mcp_server/tools.py`.
+- STAC queries in `src/geocr_mcp_server/eo.py:180` that fetch the latest items by sorting on `-properties.datetime`.
+- Validation and preview tools that read an existing GeoCroissant file or URL when you call them again.
+
+No webhook or publish hook for new Sentinel-2 or Landsat scenes is wired here. If you poll for new scenes, call `count_eo_scenes` with the same bbox and a `datetime_range`. For event or trigger specs, follow upstream Model Context Protocol.

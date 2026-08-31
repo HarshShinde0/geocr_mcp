@@ -1,0 +1,10 @@
+---
+title: "Argument completion"
+sidebarTitle: "Completion"
+---
+
+MCP protocol reference. `completion/complete` provides argument suggestions for tool inputs.
+
+`geocr-mcp-server` does not implement `completion/complete`. There is no auto completion for catalog ids, collection names or place names.
+
+Use `list_eo_catalogs` to see catalog ids, `search_eo_datasets` to page through collections, and `geocode_place` to resolve place names. Those calls return candidate lists that the host application can present as completions.

@@ -1,0 +1,22 @@
+---
+title: "SDK support tiers"
+sidebarTitle: "SDK tiers"
+---
+
+This tier list covers `HarshShinde0/geocr_mcp`. It does not rank the full Model Context Protocol SDK set. Upstream MCP maintains its own SDK pages. GeoCroissant value is the Python server in this repo.
+
+## Tiers for this repo
+
+### Tier 1: Python server `geocr-mcp`
+
+- Code is at `https://github.com/HarshShinde0/geocr_mcp` and package `geocr-mcp` on PyPI.
+- Uses FastMCP for tool definitions in `src/geocr_mcp_server/tools.py`.
+- Generates GeoCroissant 1.0 JSON-LD with `geocr:` terms from `src/geocr_mcp_server/spec.py` and STAC mapping in `src/geocr_mcp_server/eo.py`.
+- Works with two registered catalogs `earth-search` and `veda` via `src/geocr_mcp_server/catalogs.py` and `src/geocr_mcp_server/config/catalogs.yaml`.
+- CI runs `pytest` on Python 3.10, 3.11, and 3.12. Tests live in `tests/`. Maintainers require green CI before merge.
+
+### Tier 2: Upstream MCP client SDKs
+
+Clients that call this server use the standard MCP SDKs. Examples include the TypeScript SDK at `@modelcontextprotocol/sdk`. Those SDKs are not maintained in this repo. They are useful to connect an MCP host to the GeoCroissant server over `stdio` or `streamable-http` as configured by `GEOCR_TRANSPORT`, `GEOCR_HOST`, and `GEOCR_PORT` in `src/geocr_mcp_server/server.py:122`.
+
+This repo does not ship a separate GeoCroissant client SDK. All 17 tools are server side. See `README.md` for the env var table including `GEOCR_OUTPUT_DIR` and `GEOCR_CATALOGS_CONFIG`.

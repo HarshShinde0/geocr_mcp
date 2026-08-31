@@ -1,0 +1,14 @@
+---
+title: "Apps Working Group"
+sidebarTitle: "Apps"
+---
+
+This group is upstream only. `HarshShinde0/geocr_mcp` does not run an app or map UI. It is a tool server that returns GeoCroissant JSON-LD. Upstream Model Context Protocol owns the Apps work.
+
+## What geocr-mcp provides instead
+
+- Tools that return JSON-LD such as `create_geocroissant_from_stac` and `create_geocroissant_scaffold` in `src/geocr_mcp_server/tools.py`.
+- Dataset summaries that a host can render, built in `src/geocr_mcp_server/common.py:187` `summarize_distribution` and `summarize_record_set`.
+- Validation via `mlcroissant` that checks JSON syntax and structure graph before a host displays results.
+
+For interactive map previews or band visualizers, use the host or client that calls this server. Track Apps spec work in the upstream MCP repo.

@@ -1,0 +1,56 @@
+---
+title: "Contributing to GeoCroissant MCP"
+sidebarTitle: "Contributing"
+---
+
+`HarshShinde0/geocr_mcp` is open source under the repo license. Work covers Earth observation discovery, STAC queries, GeoCroissant JSON-LD generation in `src/geocr_mcp_server/eo.py` and `src/geocr_mcp_server/spec.py`, and docs under `docs/`.
+
+## How to contribute
+
+### Report bugs
+
+Check `https://github.com/HarshShinde0/geocr_mcp/issues` first. If no report exists, open a new issue. Include the tool name such as `create_geocroissant_from_stac` or `count_eo_scenes`, the bbox as `[min_lon, min_lat, max_lon, max_lat]`, catalog id, collection id, date range, and the error text or validator output.
+
+### Add a STAC catalog
+
+1. Edit `src/geocr_mcp_server/config/catalogs.yaml`. Add the catalog id, name, and base URL. Only two catalogs are registered today: `earth-search` at `https://earth-search.aws.element84.com/v1` and `veda` at `https://openveda.cloud/api/stac`. Use that file as the pattern. Or set `GEOCR_CATALOGS_CONFIG` to point at your own YAML during local testing. The loader is in `src/geocr_mcp_server/catalogs.py`.
+2. Add tests in `tests/` that cover collection discovery and scene counts for the new endpoint.
+3. Update docs if the catalog adds collections that users should know about.
+
+### Improve GeoCroissant generation
+
+- Validate output with the `mlcroissant` validator before you submit. The tool does this at runtime but local checks catch errors earlier.
+- Keep output compatible with loaders that read GeoCroissant 1.1. Do not add `eo:` or `raster:` prefixes to the JSON-LD. The server reads `eo:bands` and `raster:bands` from STAC and writes `geocr:bandConfiguration` and `geocr:spectralBandMetadata` as defined in `src/geocr_mcp_server/spec.py`.
+- Preserve provider-native `contentUrl` values. That includes `https://` and `s3://` schemes. Do not rewrite them.
+
+## Development workflow
+
+### Set up
+
+```bash
+git clone https://github.com/HarshShinde0/geocr_mcp.git
+cd geocr_mcp
+pip install -e ".[dev]"
+```
+
+### Run tests
+
+```bash
+pytest
+pytest --cov=geocr_mcp tests/
+```
+
+### Check docs
+
+```bash
+cd docs
+npx mint validate
+npx mint broken-links
+```
+
+## Pull request steps
+
+1. Create a branch such as `feat/add-usgs-catalog`.
+2. Keep changes small and add tests where code changes.
+3. Run `pytest` and `ruff` locally. Confirm formatting matches the repo config.
+4. Open a pull request against `main` at `https://github.com/HarshShinde0/geocr_mcp/pulls`. Link any related issue and note if the change needs a proposal per `community/sep-guidelines.mdx`.

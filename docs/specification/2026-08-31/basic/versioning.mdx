@@ -1,0 +1,18 @@
+---
+title: "Protocol versioning"
+sidebarTitle: "Versioning"
+---
+
+The protocol version is `2026-08-31` for `geocr-mcp-server` at `https://geocr-mcp-server.onrender.com/mcp`.
+
+## Negotiation
+
+- The client sets `_meta.io.modelcontextprotocol/protocolVersion` on every request. Over streamable HTTP it also sets `MCP-Protocol-Version` with the same value.
+- The server checks the requested version against its supported list. If it matches, the server processes the request. If not, it returns `UnsupportedProtocolVersionError` with the list of supported versions.
+- Header and body versions must match. A mismatch returns `400 Bad Request` with `HeaderMismatch`.
+
+`geocr-mcp-server` supports `2026-08-31` only. There is no fallback to an older version.
+
+## Backward compatibility
+
+Clients that speak both modern and legacy versions should probe with `server/discover`. A modern server returns a `DiscoverResult`. A legacy server returns a different error or no response, and the client may fall back to `initialize`. `geocr-mcp-server` does not implement the legacy path.

@@ -1,0 +1,10 @@
+---
+title: "Dynamic discovery"
+sidebarTitle: "Discover"
+---
+
+The server advertises its capabilities through `server/discover`. The client sends its preferred version in `_meta` and the server returns `supportedVersions` and the tools capability.
+
+For `geocr-mcp-server` the capabilities are `tools: { listChanged: true }`. Resources and prompts are not listed. When tools change at runtime the server sends `notifications/tools/list_changed`. Clients should call `tools/list` again after that notification.
+
+The server does not expose catalogs as resources. Catalog information is returned by the `list_eo_catalogs` tool.

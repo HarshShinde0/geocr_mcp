@@ -1,0 +1,18 @@
+---
+title: "Server logging"
+sidebarTitle: "Logging"
+---
+
+MCP protocol reference. The server may send `notifications/message` with `level`, `logger` and `data` for the original request.
+
+For `geocr-mcp-server`, logs go to `stderr` when the transport is `stdio`. Over `streamable-http` they are delivered on the request stream. The server logs tool calls such as `search_eo_datasets -> 12 collections` and `GeoCroissant ... validation passed`, but the spec does not guarantee message text.
+
+Clients should not parse log messages for control flow.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/message",
+  "params": { "level": "info", "logger": "geocr_mcp.search", "data": "search_eo_scenes -> 5 scene(s)" }
+}
+```

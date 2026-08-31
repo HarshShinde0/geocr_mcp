@@ -1,0 +1,15 @@
+---
+title: "Security Interest Group"
+sidebarTitle: "Security IG"
+---
+
+This group is GeoCroissant relevant. It tracks risks found in `HarshShinde0/geocr_mcp` and in hosts that call it.
+
+## Topics tied to this repo
+
+- Input checks for `bbox` in `src/geocr_mcp_server/eo.py:127` `_validated_bbox`. The value must be `[min_lon, min_lat, max_lon, max_lat]` with longitudes -180 to 180, latitudes -90 to 90, and `min_lat <= max_lat`. Place names are checked for non empty in `src/geocr_mcp_server/geocoding.py:11` before a request to Nominatim.
+- Server side request handling for STAC base URLs from `src/geocr_mcp_server/config/catalogs.yaml` via `src/geocr_mcp_server/catalogs.py:39`. Catalog hosts are fixed per file, not per call. Geocoding goes to `https://nominatim.openstreetmap.org/search` with headers set in `src/geocr_mcp_server/geocoding.py:8`.
+- File path handling for `output_filename` in `src/geocr_mcp_server/common.py:472` `secure_output_path`. The function keeps `os.path.basename` and writes inside `GEOCR_OUTPUT_DIR` or a temp dir. The directory is made with `mkdir(parents=True, exist_ok=True)`.
+- Handling of `s3://` and `https://` `contentUrl` values. The server keeps them as provider native in `src/geocr_mcp_server/eo.py:415` and does not fetch them. Validation in `src/geocr_mcp_server/common.py:316` does not check remote access.
+
+See also `community/security.mdx` for the disclosure process via `https://github.com/HarshShinde0/geocr_mcp/security/advisories`. For general MCP security guidance, use upstream docs. This page covers only the GeoCroissant server surface.

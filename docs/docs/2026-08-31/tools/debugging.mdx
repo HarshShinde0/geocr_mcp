@@ -1,0 +1,38 @@
+---
+title: "Debugging"
+sidebarTitle: "Debugging"
+---
+
+Use stderr for logs and the validation tools for document issues.
+
+## Stdio and stderr
+
+Stdout is reserved for JSON-RPC when transport is `stdio`. Printing to stdout breaks the protocol. The server uses `loguru` writing to `sys.stderr` at level `FASTMCP_LOG_LEVEL`, default `WARNING`.
+
+If the client does not start:
+
+- Check the client config points at `geocr-mcp-server`, not an old name.
+- Run `python -m geocr_mcp_server --transport stdio --help` to see flags.
+- Try `ping` first. A `pong` response proves the process is alive.
+
+## Common errors
+
+### Invalid bbox
+
+Message says bbox must be `[min_lon, min_lat, max_lon, max_lat]` or notes longitude or latitude range. Longitudes are -180 to 180, latitudes -90 to 90, and `min_lat <= max_lat`. The order is lon/lat, not lat/lon.
+
+### Unknown catalog
+
+Message lists available catalogs. Valid values are `earth-search` and `veda`. Default is `earth-search`. Set `GEOCR_CATALOGS_CONFIG` if you use a custom registry.
+
+### Collection not found
+
+Confirm the id with `search_eo_datasets` for that catalog. `earth-search` has 9 collections including `sentinel-2-c1-l2a`, `landsat-c2-l2`, `sentinel-1-grd`, `naip`. VEDA collection ids differ.
+
+### No scenes found
+
+`create_geocroissant_from_stac` raises when `raw_items` is empty. Call `count_eo_scenes` first to verify `total_matched` is not zero.
+
+### Validation failure
+
+Call `validate_croissant` with `jsonld_content`, `jsonld_path`, or `jsonld_url` (exactly one). It returns `errors` and `warnings` from `mlcroissant`. Check `conformsTo` includes `http://mlcommons.org/croissant/geo/1.0` for GeoCroissant.

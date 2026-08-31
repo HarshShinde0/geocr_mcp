@@ -1,0 +1,138 @@
+---
+title: "Responsible Gen-AI for NASA Earthdata 2026 — Demo"
+sidebarTitle: "Hackweek demo"
+description: "Full workshop by Rajat Shinde at NASA Earthdata hackweek — GeoCroissant MCP on https://geocr-mcp-server.onrender.com/mcp"
+---
+
+Presented by Rajat Shinde at Responsible Gen-AI for NASA Earthdata 2026 — [responsible-genai.hackweek.io](https://responsible-genai.hackweek.io/) · [Slides](https://docs.google.com/presentation/d/1jKHceEsNqOKvT5ZFxJCzZ8OUhcgs2LDX/edit?slide=id.g3f86c08d9c0_1_2#slide=id.g3f86c08d9c0_1_2) · [Demo](https://github.com/responsible-genai-hackweek/genai-ready-data-geocroissant/blob/main/GeoCroissant-MCP-Demo.md)
+
+# GenAI-ready data with GeoCroissant: MCP demos
+
+Hands-on material for the GenAI-ready data session at the [Responsible Gen-AI for NASA Earthdata hackweek](https://responsible-genai.hackweek.io/). Every prompt below is meant to be copied and pasted, unchanged, into Claude Code or the Claude terminal.
+
+Specifications used in this session:
+
+- Croissant 1.1: https://mlcommons.github.io/croissant/docs/croissant-spec.html
+- Croissant RAI: https://mlcommons.github.io/croissant/docs/croissant-rai-spec.html
+- GeoCroissant 1.0: https://mlcommons.org/croissant/geo/1.0
+
+## Learning objectives
+
+By the end of this session, you will be able to:
+
+- Install and verify the GeoCroissant MCP server in Claude Code
+- Search for optical and radar scenes with natural language and generate GeoCroissant metadata from the results
+- Validate GeoCroissant metadata, inspect its RecordSets, and extract source asset URLs
+- Load a GeoCroissant metadata file into a PyTorch Dataset and DataLoader
+
+## Part 1: Setup
+
+### Step 1: Install the GeoCroissant MCP server
+
+From your terminal:
+
+```bash
+claude mcp add --transport http geocr https://geocr-mcp-server.onrender.com/mcp
+```
+### Step 2: Check the tools
+
+Open Claude Code and list the connected servers and their tools:
+
+```claude
+/mcp
+```
+
+You should see `geocr` in the list. Confirm the server responds:
+
+```claude
+ping
+```
+
+## Part 2: Science use-case - flood mapping in Brazil
+
+Run these prompts in order. Each one builds on the previous step's output.
+
+### Step 1: Search and generate metadata
+
+```claude
+search for optical and radar scenes around a recent flood area in Brazil and generate a GeoCroissant metadata with Responsible AI disclosures.
+```
+
+### Step 2: Validate
+
+```claude
+crosscheck the validated GeoCroissant metadata file
+```
+
+### Step 3: Extract the asset URLs
+
+```claude
+Extract the Cloud-Optimized GeoTIFF (COG) URLs of optical & radar from the metadata file
+```
+
+### Step 4: Build the notebook
+
+```claude
+Create and save a complete notebook that loads flood mapping images using the metadata into a PyTorch Dataset, with preprocessing, side-by-side visualizations of optical and radar scenes.
+```
+
+## Part 3: Workshop - Hurricane Ida, Jefferson Parish, Louisiana
+
+The same workflow on a different event, in three queries. Run them in order.
+
+### Step 1: Search with constraints
+
+```claude
+Find optical imagery related to blue-tarp damage and radar imagery around Jefferson Parish, Louisiana, during Hurricane Ida, from August 23 to September 26, 2021. Prefer optical scenes with less than 20% cloud cover.
+```
+
+### Step 2: Select scenes and generate combined metadata
+
+```claude
+From the search results, select one relevant scene from each source and generate combined GeoCroissant metadata.
+```
+
+### Step 3: Validate and inspect
+
+```claude
+Validate the generated metadata, explain its structure, show its RecordSets, preview the records, and list the source asset URLs.
+```
+
+## Part 4: Responsible Geo-AI examples
+Datasets published with RAI attributes, each run as its own science story. The pattern is the same in both: run a query generically, run it again with RAI filters, and watch the answer change. It changes because the metadata carries the responsibility signals, not because the model guessed.
+
+
+#### Step 1: The generic query
+
+```claude
+I'm training a segmentation model for flood mapping. Load the GeoCroissant metadata for the flood area in Brazil. Is this dataset suitable for my task, and which specific assets or bands should I use?
+```
+
+#### Step 2: The same query, with RAI filters
+
+```claude
+Repeat the assessment, but apply Responsible AI criteria: only recommend the dataset if the rai:dataBiases, rai:dataLimitations, geocr:spatialBias, rai:hasSyntheticData, and prov:wasGeneratedBy fields are all populated. Before making any recommendation, report the values for rai:dataBiases, rai:dataSocialImpact, and geocr:spatialBias, and flag any RecordSet where rai:hasSyntheticData is true.
+```
+
+#### Step 3: Explain the difference
+
+```claude
+Compare your two answers. Using only the RAI and provenance fields in the metadata (rai:dataBiases, rai:dataLimitations, geocr:spatialBias, rai:hasSyntheticData, prov:wasGeneratedBy), explain what changed between the generic answer and the filtered answer, and what a researcher would have missed without the RAI attributes.
+```
+
+What to look for in the output:
+- `geocr:spatialBias` confines the dataset to the urban lowlands and Guaíba Lake delta in Porto Alegre, warning that a model trained here will not generalize to upstream steep-slope river basins (such as the Taquari valley) or arid catchments.
+- `rai:dataBiases` discloses critical sensor blind spots: optical imagery has severe cloud-cover gaps during flood onset, while radar (SAR) exhibits specular reflection on flat tarmac and airport runways, risking false-positive water classifications.
+- `rai:dataLimitations` alerts the researcher that optical and radar rasters have heterogeneous resolutions and different coordinate systems and are not co-registered into an aligned multi-modal tensor, while warning of misclassification in flooded vegetation without elevation priors.
+- `rai:dataSocialImpact` highlights disaster-relief benefits while setting an essential safety boundary: unvalidated algorithmic flood masks must not be used as sole guidance for critical evacuation routing.
+- `rai:hasSyntheticData` confirms across all RecordSets that the imagery consists of authentic Copernicus satellite observations rather than generative or synthetic samples.
+
+## Further reading
+
+- GeoCroissant recipes (all notebooks): https://ieee-grss-veda.github.io/veda-dcai/
+- STAC to GeoCroissant: https://ieee-grss-veda.github.io/veda-dcai/STAC_to_GeoCroissant/stac_to_geocroissant.html
+- GeoCroissant to STAC: https://ieee-grss-veda.github.io/veda-dcai/GeoCroissant_to_STAC/conversion-notebook.html
+- GeoCroissant to GeoDCAT: https://ieee-grss-veda.github.io/veda-dcai/GeoCroissant_to_GeoDCAT/conversion-geodcat-notebook.html
+- Croissant paper: https://dl.acm.org/doi/abs/10.1145/3650203.3663326
+- Croissant RAI paper: https://arxiv.org/pdf/2407.16883
+- NASA Earthdata blog on Croissant: https://www.earthdata.nasa.gov/news/blog/introducing-croissant-format-machine-learning-datasets

@@ -1,0 +1,112 @@
+name: Report a bug
+description: >
+  A GeoCroissant tool or dataset generation step does not work as expected,
+  or the documentation is wrong.
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when a GeoCroissant MCP tool or the docs do not behave as described.
+
+        - Tools covered here: `list_eo_catalogs`, `search_eo_datasets`, `get_eo_dataset_details`, `geocode_place`, `count_eo_scenes`, `search_eo_scenes`, `create_geocroissant_from_stac`, `create_geocroissant_from_stac_sources`, `create_geocroissant_scaffold`, `validate_croissant`, `inspect_geocroissant`, `get_structure_graph`, `list_record_sets`, `get_records_preview`, `extract_distribution_urls`, `get_geocroissant_spec_reference`, and `ping`.
+        - For server code, client configuration, or transport issues, file in the main repository at [HarshShinde0/geocr_mcp](https://github.com/HarshShinde0/geocr_mcp/issues) and link back to this docs issue if needed.
+        - Include validation output from `validate_croissant` (mlcroissant) when your report involves generated JSON-LD.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is broken?
+      description: Choose the area that best matches the problem.
+      options:
+        - list_eo_catalogs returns wrong or missing catalogs
+        - search_eo_datasets returns wrong or missing collections
+        - get_eo_dataset_details is wrong or incomplete
+        - geocode_place returns wrong bbox
+        - count_eo_scenes or search_eo_scenes returns wrong results
+        - create_geocroissant_from_stac fails or produces invalid GeoCroissant
+        - create_geocroissant_from_stac_sources fails or produces invalid GeoCroissant
+        - create_geocroissant_scaffold fails or produces invalid scaffold
+        - validate_croissant, inspect_geocroissant, or other inspection tool is wrong
+        - Documentation is wrong or misleading
+        - A docs page is missing or a link is broken
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: endpoint
+    attributes:
+      label: Server endpoint
+      description: >
+        Which endpoint did you call? Use the full URL.
+      placeholder: "https://geocr-mcp-server.onrender.com/mcp or http://localhost:8000/mcp"
+    validations:
+      required: true
+
+  - type: input
+    id: catalog
+    attributes:
+      label: Catalog
+      description: >
+        Catalog id from list_eo_catalogs or your GEOCR_CATALOGS_CONFIG.
+      placeholder: "earth-search, veda, or custom catalog id"
+    validations:
+      required: false
+
+  - type: input
+    id: collection
+    attributes:
+      label: Collection
+      description: Collection id used in the failing call.
+      placeholder: "sentinel-2-l2a"
+    validations:
+      required: false
+
+  - type: input
+    id: bbox
+    attributes:
+      label: Bounding box
+      description: >
+        EPSG:4326 bbox as [min_lon, min_lat, max_lon, max_lat]. Include datetime_range and max_cloud_cover if you set them.
+      placeholder: "[-53, -31, -50, -28], datetime_range: 2026-08-01/2026-08-25, max_cloud_cover: 20"
+    validations:
+      required: false
+
+  - type: input
+    id: location
+    attributes:
+      label: Where in the docs?
+      description: >
+        Link to the Mintlify page, specification section, or docs file. Use a permalink if the content may change.
+      placeholder: https://github.com/HarshShinde0/geocr_mcp/blob/main/docs/docs/2026-08-31/getting-started/intro.mdx
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen?
+      description: What you expected the tool or docs to do.
+      placeholder: "Expected create_geocroissant_from_stac to return valid GeoCroissant JSON-LD with one RecordSet and provider URIs."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happens?
+      description: >
+        Paste the error, validation report from validate_croissant, or quote the docs text that is wrong. Include tool parameters you sent.
+      placeholder: "Error: ... or mlcroissant validation warnings: ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: >
+        Environment details that help reproduce the issue: mlcroissant version, geocr-mcp version, Python version, transport (stdio or streamable-http), and any workaround you found.
+    validations:
+      required: false

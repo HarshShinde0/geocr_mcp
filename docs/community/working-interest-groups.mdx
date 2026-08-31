@@ -1,0 +1,36 @@
+---
+title: "Working groups and interest groups"
+sidebarTitle: "Working & interest groups"
+---
+
+`HarshShinde0/geocr_mcp` is a small scope repo: 17 tools in `src/geocr_mcp_server/tools.py`, two catalogs `earth-search` and `veda` in `src/geocr_mcp_server/config/catalogs.yaml`, and GeoCroissant mapping in `src/geocr_mcp_server/eo.py` and `src/geocr_mcp_server/spec.py`. Most day to day work happens in GitHub issues and pull requests, not in standing groups. The lists below track both GeoCroissant-specific areas and upstream Model Context Protocol groups.
+
+A group marked GeoCroissant specific has work and code in this repo. A group marked upstream only has no code here. For those, geocr-mcp follows upstream MCP decisions and links back to that project.
+
+## Working groups
+
+Groups that own code or docs deliverables.
+
+- [Agents](/community/working-groups/agents) is GeoCroissant specific. It covers EO agent workflows that chain `geocode_place`, `count_eo_scenes`, and `create_geocroissant_from_stac`.
+- [File uploads](/community/working-groups/file-uploads) is GeoCroissant specific. It covers `FileObject` and `FileSet` entries in generated GeoCroissant.
+- [Registry](/community/working-groups/registry) is GeoCroissant specific. It covers the STAC catalog registry at `src/geocr_mcp_server/catalogs.py`.
+- [Python SDK](/community/working-groups/sdk) is GeoCroissant specific. It covers the `geocr-mcp` package and FastMCP registration.
+- [Skills](/community/working-groups/skills-over-mcp) is GeoCroissant specific. It covers agent skills under `docs/.mintlify/skills/` such as `draft-sep`.
+- [Apps](/community/working-groups/apps) is upstream only. Geocr-mcp has no app UI. It returns JSON-LD that a host may render.
+- [Inspector](/community/working-groups/inspector-v2) is upstream only. Tests use `pytest` and `mlcroissant`, not a custom Geospatial Inspector.
+- [Interceptors](/community/working-groups/interceptors) is upstream only. STAC auth is not done via an interceptor interface here.
+- [Server cards](/community/working-groups/server-card) is upstream only. Capability info is in tool descriptions and the catalog registry.
+- [Transports](/community/working-groups/transports) is partly shared. Geocr-mcp runs on `stdio` and `streamable-http` via `GEOCR_TRANSPORT` in `src/geocr_mcp_server/server.py:122`. It does not add a separate transport spec.
+- [Triggers & events](/community/working-groups/triggers-events) is upstream only. The server is request response. It has no event feed.
+
+## Interest groups
+
+Groups that gather requirements without owning core code.
+
+- [Auth](/community/interest-groups/auth) is GeoCroissant relevant. It tracks token handling for STAC endpoints behind auth.
+- [Security](/community/interest-groups/security) is GeoCroissant relevant. It tracks bbox validation in `src/geocr_mcp_server/eo.py:127` and output path handling in `src/geocr_mcp_server/common.py:472`.
+- [Enterprise](/community/interest-groups/enterprise) is partly relevant for private catalogs via `GEOCR_CATALOGS_CONFIG`.
+- [Tool annotations](/community/interest-groups/tool-annotations) is partly relevant for annotation of the 17 tools.
+- [Primitive grouping](/community/interest-groups/primitive-grouping) is upstream only. The server exposes tools. It does not expose `stac://` or `geocr://` resource URIs.
+- [Enterprise managed authorization](/community/interest-groups/enterprise-managed-authorization) is upstream only. This repo has no RBAC.
+- [Financial services](/community/interest-groups/financial-services) is upstream only. It is a domain use case that can consume GeoCroissant output but has no code in this repo.

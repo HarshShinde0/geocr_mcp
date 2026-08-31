@@ -1,0 +1,14 @@
+---
+title: "File Uploads Working Group"
+sidebarTitle: "File uploads"
+---
+
+This group is GeoCroissant specific. It covers how generated GeoCroissant declares files, not a separate upload API.
+
+## Scope
+
+- `FileObject` and `FileSet` entries in generated JSON-LD. The scaffold and STAC generation code builds them in `src/geocr_mcp_server/eo.py:449` `geocroissant_from_stac` and `src/geocr_mcp_server/tools.py:942` `create_geocroissant_scaffold`.
+- Branch `distribution` summaries in `src/geocr_mcp_server/common.py:187`. That code lists `contentUrl` values as they came from STAC, with `https://` and `s3://` preserved.
+- Local file writes for `output_filename`. The safe path rule is in `src/geocr_mcp_server/common.py:472` `secure_output_path`. Names are cut to basename and written inside `GEOCR_OUTPUT_DIR` or `tempfile.gettempdir()/geocr-mcp`.
+
+This server does not ingest user COGs or GeoParquet files as input. To trace a file upload primitive, see the upstream Model Context Protocol. Here the focus is correct declaration of files that already exist on the provider.

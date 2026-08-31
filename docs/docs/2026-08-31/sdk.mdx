@@ -1,0 +1,132 @@
+---
+title: "SDK and tool reference"
+sidebarTitle: "SDK reference"
+---
+
+`geocr-mcp-server` v1.0.0 exposes 17 tools over JSON-RPC. There are no resources or prompts. Transports are `stdio` and `streamable-http` (`sse` accepted as flag).
+
+## Discovery
+
+### `ping`
+
+No parameters. Returns `pong`.
+
+### `list_eo_catalogs`
+
+No parameters. Returns `catalogs` for `earth-search` (`https://earth-search.aws.element84.com/v1`) and `veda` (`https://openveda.cloud/api/stac`), each with `id`, `name`, `url`, `description`, `collection_discovery: "live"`, and `configured_collection_count`.
+
+### `search_eo_datasets`
+
+- `catalog_id` string or null, default `earth-search`
+- `limit` integer 1 to 500, default 15
+- `offset` integer, default 0
+
+Returns `catalog`, `offset`, `count`, `total_catalog_collections`, `truncated`, `next_offset`, and `collections` with title, description, license, keywords, providers, spatial and temporal extent, item asset keys, and summaries.
+
+### `get_eo_dataset_details`
+
+- `collection_id` string, required
+- `catalog_id` string or null
+
+Returns `catalog` and `collection` (the provider collection dict).
+
+### `geocode_place`
+
+- `place_name` string, required
+- `limit` integer 1 to 10, default 5
+
+Returns `query`, `count`, `candidates` with `display_name`, `type`, `category`, `latitude`, `longitude`, `bbox` as `[min_lon, min_lat, max_lon, max_lat]`, `importance`, and `attribution`.
+
+### `count_eo_scenes`
+
+- `bbox` array of 4 numbers, required `[min_lon, min_lat, max_lon, max_lat]`
+- `collections` array of strings, required, at least one
+- `catalog_id` string or null
+- `datetime_range` string or null, for example `2023-01-01/2023-12-31`
+- `max_cloud_cover` number or null
+
+Returns `catalog`, `bbox`, `datetime_range`, `cloud_filter_applied`, `counts` per collection, `total_matched`, `notes`.
+
+### `search_eo_scenes`
+
+- `bbox` required
+- `collections` required
+- `catalog_id` or null
+- `datetime_range` or null
+- `max_cloud_cover` or null
+- `limit` integer 1 to 50, default 10
+
+Returns `catalog`, `catalog_name`, `collections_searched`, `bbox`, `datetime_range`, `max_cloud_cover`, `cloud_filter_applied`, `notes`, `scene_count`, `scenes` with `scene_id`, `collection`, `datetime`, `platform`, `cloud_cover`, `epsg`, `gsd`, `bbox`, `asset_keys`, and extension fields when present.
+
+## Generation
+
+### `create_geocroissant_scaffold`
+
+- `name` string, required
+- `description`, `license`, `version`, `date_published`, `cite_as` strings
+- `creators` array or null
+- `bbox` `[min_lon, min_lat, max_lon, max_lat]` or null
+- `temporal_coverage` string or null, for example `2018-01-01/2021-12-31`
+- `coordinate_reference_system` string, default empty
+- `spatial_resolution`, `spatial_resolution_unit` (default `m`), `temporal_resolution_value`, `temporal_resolution_unit` (default `days`)
+- `band_names`, `spectral_bands`, `file_sets`, `file_objects`, `record_set_name` (default `records`), `record_set_description`, `field_name` (default `data`), `field_data_type` (default `sc:ImageObject`), `field_is_array`, `field_array_shape`, `source_file_set_id`
+- `spatial_bias`, `sampling_strategy`, `data_collection`, `data_biases`, `data_limitations`, `data_use_cases`, `data_social_impact`, `personal_sensitive_information`, `has_synthetic_data`, `rai_properties`, `output_filename`
+
+Returns `valid`, `json_ld`, `errors`, `warnings`, `path`. The `@context` is from `spec.official_context()` with `sc`, `cr`, `geocr`, `rai`, `dct`, `prov`.
+
+### `create_geocroissant_from_stac`
+
+- `name` string, required
+- `bbox` required
+- `collections` required
+- `catalog_id` or null
+- `datetime_range` or null
+- `max_cloud_cover` or null
+- `limit` integer 1 to 50, default 5
+- `description`, `license`, `creators`, `spatial_bias`, `sampling_strategy`, `data_collection`, `data_biases`, `data_limitations`, `data_use_cases`, `data_social_impact`, `personal_sensitive_information`, `has_synthetic_data`, `rai_properties`, `output_filename`
+
+Returns `valid`, `errors`, `warnings`, `json_ld`, `path`, `asset_urls`, `asset_count`, `search_summary` with `catalog`, `collections_searched`, `bbox`, `datetime_range`, `scene_count`. The document has `isLiveDataset: true`, CRS `EPSG:4326`, and a RecordSet `scenes` with 7 fields: `scene_id`, `collection`, `datetime`, `cloud_cover`, `epsg`, `image_url`, `asset_urls`. Distribution entries preserve provider `contentUrl` values.
+
+### `create_geocroissant_from_stac_sources`
+
+- `name` string, required
+- `sources` array, required. Each source object needs `catalog_id`, `collection_id`, `bbox`; optional `source_id`, `datetime_range`, `max_cloud_cover`, `limit` 1 to 50.
+- `description`, `license`, `creators`, `spatial_bias`, `sampling_strategy`, `data_collection`, `data_biases`, `data_limitations`, `data_use_cases`, `data_social_impact`, `personal_sensitive_information`, `has_synthetic_data`, `rai_properties`, `output_filename`
+
+Returns `valid`, `json_ld`, `path`, `asset_urls`, `asset_count`, `assets`, `source_results`, `scene_count`. Each source becomes a RecordSet `scenes_<source_id>` with per-source `source_id` and `catalog_id` fields. Distribution ids are prefixed with the record set id.
+
+## Inspection
+
+### `validate_croissant`
+
+Exactly one of `jsonld_path`, `jsonld_url`, `jsonld_content` is required. The other two must be empty. Returns `valid`, `source`, `errors`, `warnings`, `conforms_to`, `is_geospatial`, `dataset_name`. Invalid JSON in `jsonld_content` returns `valid: false` with a `JSONDecodeError` error.
+
+### `inspect_geocroissant`
+
+Same three inputs, exactly one required. Returns name, `conformsTo`, version, description, license, creators, geospatial properties, distribution summary, and `record_sets` with field details.
+
+### `get_structure_graph`
+
+Same three inputs. Returns `node_count`, `edge_count`, `nodes` with `@id`, `type` (`Metadata`, `FileObject`, `FileSet`, `RecordSet`, `Field`), `name`, optional `parent`, and `edges` as `source` -> `target`.
+
+### `list_record_sets`
+
+Same three inputs. Returns a list per RecordSet with `@id`, `name`, `field_count`, `fields`, `key`, `num_declared_records`, and GeoCroissant properties.
+
+### `get_records_preview`
+
+- `record_set` string, required: the `@id` from `list_record_sets`
+- `limit` integer 1 to 100, default 5
+- `filters` object or null, for example `{"my_recordset/split": "train"}`
+- `jsonld_path`, `jsonld_url`, `jsonld_content` exactly one required
+
+Returns `record_set`, `columns`, `rows`, `num_records`, `truncated`. Rows are from `mlcroissant.Dataset.records`.
+
+### `extract_distribution_urls`
+
+Same three inputs. Returns `urls` per distribution entry with `@id`, `@type`, `name`, `encodingFormat`, `contentUrl`, `contentSize`, `md5`, `sha256`, `includes`, `containedIn`.
+
+### `get_geocroissant_spec_reference`
+
+- `topic` string, one of `overview`, `context`, `properties`, `rai`, `example`, `python-api`, `all`, default `all`. Returns the reference text.
+

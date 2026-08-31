@@ -1,0 +1,18 @@
+---
+title: "Agents Working Group"
+sidebarTitle: "Agents"
+---
+
+This group is GeoCroissant specific. It covers how an AI agent uses the 17 tools in `src/geocr_mcp_server/tools.py` to build an Earth observation dataset without manual steps.
+
+## Scope
+
+- Call order. The usual path is `geocode_place` to get `[min_lon, min_lat, max_lon, max_lat]`, `search_eo_datasets` to list collections, `count_eo_scenes` to check availability, then `create_geocroissant_from_stac` or `create_geocroissant_from_stac_sources` to generate JSON-LD. Mapping is shown in `docs/2026-08-31/learn/architecture.mdx`.
+- Error recovery when a spatial query returns zero scenes or a catalog is slow. The group keeps guidance on how to retry with a wider bbox or different collection.
+- Validation. Every generated file is checked with `mlcroissant`. The report type is `ValidationReport` in `src/geocr_mcp_server/models.py:13`.
+
+For anything about generic MCP agent protocol, see the upstream Model Context Protocol project. This page does not set upstream agent rules.
+
+## Current state
+
+Work lives in GitHub issues at `https://github.com/HarshShinde0/geocr_mcp/issues`. No separate meeting is scheduled. The two shipped catalogs are `earth-search` and `veda` in `src/geocr_mcp_server/config/catalogs.yaml`.

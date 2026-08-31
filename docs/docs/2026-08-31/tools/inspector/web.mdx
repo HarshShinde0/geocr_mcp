@@ -1,0 +1,31 @@
+---
+title: "Web inspector"
+sidebarTitle: "Web inspector"
+---
+
+The Web Inspector is the browser UI for any MCP server, including `geocr-mcp-server`.
+
+## Local stdio
+
+```bash
+npx @modelcontextprotocol/inspector uvx geocr-mcp-server
+```
+
+Open `http://localhost:6274`. Pick Tools, choose `geocode_place`, enter `{"place_name": "San Francisco", "limit": 5}`, and run. The result shows `candidates` with `bbox` values.
+
+Then try `list_eo_catalogs` with no arguments, and `search_eo_datasets` with `{"catalog_id": "earth-search", "limit": 5}`. Each call appears in the Protocol tab as raw JSON-RPC.
+
+## Remote HTTP
+
+```bash
+python -m geocr_mcp_server --transport streamable-http --port 8000
+npx @modelcontextprotocol/inspector --transport http --server-url https://geocr-mcp-server.onrender.com/mcp
+```
+
+The web UI connects over HTTP. Use the Network tab to see HTTP headers alongside JSON-RPC.
+
+## GeoCroissant specifics
+
+- Tools are 17 in total; there are no resources or prompts to browse.
+- Generation calls like `create_geocroissant_from_stac` require `name`, `bbox`, and `collections`. Start with `limit` 5 to keep the response small.
+- Validation is synchronous through `mlcroissant` and returns `valid`, `errors`, and `warnings` without checking remote asset availability.

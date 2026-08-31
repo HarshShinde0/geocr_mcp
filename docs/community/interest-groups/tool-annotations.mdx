@@ -1,0 +1,14 @@
+---
+title: "Tool Annotations Interest Group"
+sidebarTitle: "Tool annotations"
+---
+
+This group is GeoCroissant relevant but narrow. It notes how the 17 tools in `src/geocr_mcp_server/tools.py` can be described to a model. This repo does not ship a custom annotation spec.
+
+## What the server has today
+
+- FastMCP tool metadata for each tool. Names include `list_eo_catalogs`, `search_eo_datasets`, `geocode_place`, `count_eo_scenes`, `search_eo_scenes`, `create_geocroissant_from_stac`, `create_geocroissant_from_stac_sources`, `validate_croissant`, `inspect_geocroissant`, `get_structure_graph`, `list_record_sets`, `get_records_preview`, `extract_distribution_urls`, `create_geocroissant_scaffold`, and `get_geocroissant_spec_reference`.
+- Parameter hints that matter for planning. `bbox` is `[min_lon, min_lat, max_lon, max_lat]` in EPSG:4326 as checked in `src/geocr_mcp_server/eo.py:127`. `limit` is 1 to 50 for scene tools and 1 to 500 for `search_eo_datasets`. See `src/geocr_mcp_server/tools.py:84` and `197`.
+- Behavior flags. Catalog and scene tools read remote STAC, so they use the network. Generation tools may write a file via `output_filename` resolved by `src/geocr_mcp_server/common.py:472`. Validation is local via `mlcroissant`.
+
+For upstream annotation specs such as cost or side effect tags, follow the Model Context Protocol project. Propose new GeoCroissant hints as an issue at `https://github.com/HarshShinde0/geocr_mcp/issues`.

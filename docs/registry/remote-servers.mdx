@@ -1,0 +1,123 @@
+---
+title: Run geocr-mcp-server remotely
+sidebarTitle: Remote server
+---
+
+geocr-mcp-server runs as a local stdio process by default. It can also run as a remote server over streamable HTTP. This page explains the transport modes, the `/mcp` endpoint, and the environment variables in `src/geocr_mcp_server/server.py:118`.
+
+## Transport modes
+
+`src/geocr_mcp_server/server.py:118` selects the transport from the environment and from CLI flags.
+
+* `stdio` - default on a developer machine. The client spawns the server as a subprocess and talks over stdin and stdout. No network port is opened.
+* `streamable-http` - default in cloud environments. The server binds a HTTP port and serves the MCP streamable HTTP transport at `/mcp`. This is the correct transport for remote use. The older SSE transport is still accepted for compatibility but you should prefer `streamable-http`.
+* `sse` - server sent events. Supported but deprecated. Use `streamable-http` for new deployments.
+
+Flags:
+
+```bash
+geocr-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000
+geocr-mcp-server --transport stdio
+```
+
+The code in `src/geocr_mcp_server/server.py:122` sets defaults this way:
+
+* If `PORT` or `RENDER` is set, the host defaults to `0.0.0.0` and transport defaults to `streamable-http`. This is cloud mode.
+* Otherwise host defaults to `127.0.0.1` and transport defaults to `stdio`.
+* You can override with `GEOCR_TRANSPORT`, `GEOCR_HOST`, and `GEOCR_PORT` or `PORT`.
+
+## The /mcp endpoint
+
+When you run with `streamable-http` or `sse`, the server exposes:
+
+* `GET /` - health and status, defined in `src/geocr_mcp_server/server.py:102`. It returns `status`, `server`, `version`, `mcp_endpoint`, and `documentation`. It works with `HEAD` as well.
+* `POST /mcp` - the MCP endpoint. The message in `src/geocr_mcp_server/server.py:113` advertises it as `/mcp`. Clients post JSON-RPC messages there.
+* `/mcp` also handles GET for the streamable HTTP SSE stream when the client uses that mode.
+
+Health check example:
+
+```bash
+curl -s https://geocr-mcp-server.onrender.com/ | jq .
+```
+
+```json
+{
+  "status": "online",
+  "server": "geocr-mcp-server",
+  "version": "0.4.2",
+  "mcp_endpoint": "/mcp",
+  "documentation": "https://github.com/HarshShinde0/geocr_mcp"
+}
+```
+
+Hosted MCP URL:
+
+```
+https://geocr-mcp-server.onrender.com/mcp
+```
+
+This is the live endpoint deployed from `render.yaml` with `src/geocr_mcp_server/server.py:122` defaults. Point your MCP client at this URL with transport `streamable-http`. Local stdio clients do not need a URL.
+
+For self-hosted deployments, replace the host with your own domain, for example `https://your-host.example.com/mcp`.
+
+## Environment variables
+
+Variables read in `src/geocr_mcp_server/server.py:20` and `src/geocr_mcp_server/server.py:122`:
+
+* `GEOCR_TRANSPORT` - `stdio`, `sse`, or `streamable-http`. Takes precedence over the cloud default.
+* `GEOCR_HOST` - bind host for HTTP transports. Use `0.0.0.0` to listen on all interfaces in a container.
+* `GEOCR_PORT` - port for HTTP transports. Falls back to `PORT` if set, then to `8000`.
+* `PORT` - standard cloud port variable. If present, `src/geocr_mcp_server/server.py:20` enters cloud mode and relaxes `TransportSecuritySettings` to allow `*` for `allowed_hosts` and `allowed_origins`.
+* `RENDER` - Render platform flag. Same effect as `PORT`.
+* `GEOCR_CATALOGS_CONFIG` - path to a custom catalogs YAML file. See `src/geocr_mcp_server/catalogs.py:21`.
+* `GEOCR_OUTPUT_DIR` - directory for files written by `create_geocroissant_from_stac` when `output_filename` is set.
+* `FASTMCP_LOG_LEVEL` - log level, default `WARNING` in `src/geocr_mcp_server/server.py:18`.
+
+## Local vs remote configuration
+
+Local stdio with Claude Desktop or similar:
+
+```json
+{
+  "mcpServers": {
+    "geocr-mcp": {
+      "command": "uvx",
+      "args": ["geocr-mcp"],
+      "env": {
+        "GEOCR_CATALOGS_CONFIG": "/path/to/catalogs.yaml"
+      }
+    }
+  }
+}
+```
+
+Remote streamable HTTP on a server or in a container:
+
+```bash
+GEOCR_TRANSPORT=streamable-http \
+GEOCR_HOST=0.0.0.0 \
+PORT=8000 \
+geocr-mcp-server
+```
+
+Docker example:
+
+```bash
+docker run -p 8000:8000 \
+  -e GEOCR_TRANSPORT=streamable-http \
+  -e GEOCR_HOST=0.0.0.0 \
+  -e GEOCR_PORT=8000 \
+  geocr-mcp-server
+```
+
+Then configure the client to use `https://geocr-mcp-server.onrender.com/mcp` for the hosted service, or `https://your-host:8000/mcp` for self-hosted, with transport `streamable-http`.
+
+## Security
+
+In cloud mode the server sets `TransportSecuritySettings` with `enable_dns_rebinding_protection=False` and wildcard hosts and origins in `src/geocr_mcp_server/server.py:21`. This matches the needs of Render and similar platforms where the host is assigned dynamically. For self hosted deployments behind a reverse proxy, terminate TLS at the proxy and restrict access at the network layer. The registry itself does not add MCP OAuth. STAC catalogs are public, and asset auth is per URI scheme.
+
+## Choosing a transport
+
+* Use `stdio` for local development and for desktop clients that spawn the server.
+* Use `streamable-http` for any remote deployment, team shared endpoint, or container.
+* Use `sse` only if a client does not yet support `streamable-http`.

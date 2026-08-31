@@ -1,0 +1,16 @@
+---
+title: "Python SDK Working Group"
+sidebarTitle: "SDK"
+---
+
+This group is GeoCroissant specific. It maintains the Python server package `geocr-mcp` at `https://github.com/HarshShinde0/geocr_mcp`.
+
+## Scope
+
+- Package layout under `src/geocr_mcp_server/` with entry point `geocr_mcp_server.server:main`. See `src/geocr_mcp_server/server.py:118`.
+- Tool registration in `src/geocr_mcp_server/tools.py:31` `register` which wires 17 tools into FastMCP.
+- GeoCroissant spec code in `src/geocr_mcp_server/spec.py:17` `official_context` and `src/geocr_mcp_server/spec.py:69` mapping of bands and CRS.
+- STAC client code in `src/geocr_mcp_server/eo.py` including `search_scenes` with bbox validation at `src/geocr_mcp_server/eo.py:127` and band handling at `src/geocr_mcp_server/eo.py:311`.
+- Server config for transports and env vars `GEOCR_TRANSPORT`, `GEOCR_HOST`, `GEOCR_PORT`, `GEOCR_OUTPUT_DIR`, `GEOCR_CATALOGS_CONFIG` covered in `README.md` and `src/geocr_mcp_server/server.py:122` plus `src/geocr_mcp_server/common.py:472`.
+
+CI runs `pytest` and `ruff`. The package targets Python 3.10, 3.11, and 3.12 as listed in `pyproject.toml`. Client SDKs in other languages are upstream MCP owned. This group does not publish them.

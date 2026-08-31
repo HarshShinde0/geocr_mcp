@@ -1,0 +1,24 @@
+---
+title: "Transports"
+sidebarTitle: "Transports"
+---
+
+`geocr-mcp-server` supports `stdio` and `streamable-http` at `/mcp` (`https://geocr-mcp-server.onrender.com/mcp` when hosted, `http://localhost:8000/mcp` locally). It does not support the deprecated HTTP+SSE transport with `GET /sse`.
+
+## 1. Standard input and output (stdio)
+
+- Each message is one JSON-RPC object terminated by newline.
+- The server reads from `stdin` and writes to `stdout`. Only valid JSON-RPC frames may appear on `stdout`.
+- Logs go to `stderr`.
+
+```
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ping","arguments":{},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-08-31"}}}
+```
+
+## 2. Streamable HTTP
+
+- The server exposes `POST /mcp` at `https://geocr-mcp-server.onrender.com/mcp`. Each tool call is one POST with `Accept: application/json, text/event-stream`, `MCP-Protocol-Version: 2026-08-31`, `Mcp-Method` and `Mcp-Name` headers.
+- The response is `application/json` for single replies or `text/event-stream` for streamed notifications and the final response.
+- In cloud mode (`PORT` or `RENDER` set) the server binds to `0.0.0.0` on that port and disables DNS rebinding checks for the managed proxy.
+
+No `GET /sse` endpoint exists and no session id is issued.

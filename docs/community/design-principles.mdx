@@ -1,0 +1,32 @@
+---
+title: "Design principles"
+sidebarTitle: "Design principles"
+---
+
+These principles guide work in `HarshShinde0/geocr_mcp`. They reflect what the code does today in `src/geocr_mcp_server/eo.py`, `src/geocr_mcp_server/spec.py`, and `src/geocr_mcp_server/tools.py`.
+
+## 1. Use open geospatial standards
+
+- Bounding boxes are `[min_lon, min_lat, max_lon, max_lat]` in WGS84 (EPSG:4326). Use that order for every tool. The check is in `src/geocr_mcp_server/eo.py:127` `_validated_bbox`. Longitudes must be -180 to 180, latitudes -90 to 90, and `min_lat <= max_lat`. Geocoding returns the same order in `src/geocr_mcp_server/geocoding.py:43` by converting Nominatim `boundingbox` from `[south, north, west, east]` to `[west, south, east, north]`.
+- The server speaks STAC 1.0.0 via `pystac-client`. See `src/geocr_mcp_server/eo.py:41` `_open_client`.
+- JSON-LD follows MLCommons Croissant 1.1 plus the GeoCroissant 1.0 extension. The context is built in `src/geocr_mcp_server/spec.py:17` `official_context()` with prefixes `geocr` and `rai` and `conformsTo` set to Croissant 1.1 and GeoCroissant 1.0 IRIs. That file also defines `geocr:coordinateReferenceSystem`, `geocr:bandConfiguration`, `geocr:spectralBandMetadata`, `geocr:spatialResolution`, and `isLiveDataset`.
+
+## 2. Keep provider URIs as they are
+
+- Scene assets stay provider-native. The document keeps `contentUrl` as returned by STAC, including `https://` and `s3://`. See `src/geocr_mcp_server/eo.py:415` `_pick_asset_urls` and `src/geocr_mcp_server/eo.py:373` `_storage_info`. The server does not proxy or sign those URLs.
+- Catalogs are configured, not guessed. The list lives in `src/geocr_mcp_server/config/catalogs.yaml` and loads via `src/geocr_mcp_server/catalogs.py:21`. Only `earth-search` at `https://earth-search.aws.element84.com/v1` and `veda` at `https://openveda.cloud/api/stac` are shipped. An alternate file can be set with `GEOCR_CATALOGS_CONFIG`.
+
+## 3. Map STAC bands to GeoCroissant bands
+
+- Input bands are STAC `eo:bands` and `raster:bands`. Output uses GeoCroissant terms.
+- Code collects bands in `src/geocr_mcp_server/eo.py:311` `_collect_bands` and renders them in `src/geocr_mcp_server/eo.py:340` `_spectral_entries` as `geocr:bandConfiguration` and `geocr:spectralBandMetadata` with center wavelength and bandwidth where available. Results are summarized for preview in `src/geocr_mcp_server/common.py:146` and `164`.
+
+## 4. Keep LLM context small and validated
+
+- Catalog listing is paged. `search_eo_datasets` caps `limit` at 500 with `offset`. Scene search caps `limit` at 50 and uses `max_items` for total count. See `src/geocr_mcp_server/eo.py:180` `search_scenes` and `src/geocr_mcp_server/eo.py:228` `count_scenes`.
+- Generation can write to disk. Tools `create_geocroissant_from_stac`, `create_geocroissant_from_stac_sources`, and `create_geocroissant_scaffold` accept `output_filename`. The path is resolved by `src/geocr_mcp_server/common.py:472` `secure_output_path` which keeps the basename and writes inside `GEOCR_OUTPUT_DIR` or the system temp dir.
+- Every generated file is validated before it is returned. The validator is `mlcroissant`. It checks JSON syntax, JSON-LD expansion, structure graph, and schema conformance. It does not fetch remote assets. The response includes `valid`, `errors`, and `warnings` as modeled in `src/geocr_mcp_server/models.py:13` `ValidationReport`.
+
+## 5. Run the same on stdio and HTTP
+
+- The server runs on `stdio` or `streamable-http`. The default is picked in `src/geocr_mcp_server/server.py:122` from `GEOCR_TRANSPORT`, `GEOCR_HOST`, and `GEOCR_PORT`. Behavior does not change with transport. Diagnostics go to `stderr`. The port defaults to `8000`.

@@ -1,0 +1,34 @@
+---
+title: "Server concepts"
+sidebarTitle: "Server concepts"
+---
+
+`geocr-mcp-server` exposes 17 tools. It has no resources and no prompts.
+
+## Discovery and geocoding
+
+- `ping` returns `pong`. Use it to confirm the server is up.
+- `list_eo_catalogs` returns the two registered catalogs from `config/catalogs.yaml`: `earth-search` at `https://earth-search.aws.element84.com/v1` and `veda` at `https://openveda.cloud/api/stac`. Each entry includes id, name, url, description, and `configured_collection_count`.
+- `search_eo_datasets(catalog_id, limit, offset)` pages live collections through `pystac-client`. `limit` is 1 to 500, `offset` is zero-based. Results include title, description truncated to 1000 characters, license, keywords, providers, spatial bbox, temporal interval, item asset keys, and summaries.
+- `get_eo_dataset_details(collection_id, catalog_id)` returns the provider collection dict for one collectionid.
+- `geocode_place(place_name, limit)` returns candidates from Nominatim with `display_name`, `type`, `category`, `latitude`, `longitude`, `bbox` as `[min_lon, min_lat, max_lon, max_lat]`, and `importance`. `limit` is 1 to 10, default 5.
+- `count_eo_scenes(bbox, collections, catalog_id, datetime_range, max_cloud_cover)` counts `numberMatched` per collection without fetching items.
+- `search_eo_scenes(bbox, collections, catalog_id, datetime_range, max_cloud_cover, limit)` returns scene summaries: `scene_id`, `collection`, `datetime`, `platform`, `cloud_cover`, `epsg`, `gsd`, `bbox`, `asset_keys`, plus SAR and optical extension fields when present. `limit` is 1 to 50.
+
+All EO tools require an explicit `collections` list when a bbox is used. No keyword routing is done; selection comes from live metadata.
+
+## GeoCroissant generation
+
+- `create_geocroissant_scaffold` builds a starter GeoCroissant document from explicit parameters: `name` plus optional `bbox`, `temporal_coverage`, `coordinate_reference_system`, `spatial_resolution`, `temporal_resolution_value`, `band_names`, `spectral_bands`, `file_sets`, `file_objects`, `record_set_name`, and RAI fields. The `@context` is `spec.official_context()` with `sc`, `cr`, `geocr`, `rai`, `dct`, `prov`. Conformance is `http://mlcommons.org/croissant/1.1` and `http://mlcommons.org/croissant/geo/1.0`, with `http://mlcommons.org/croissant/RAI/1.0` added when RAI fields are present.
+- `create_geocroissant_from_stac(name, bbox, collections, catalog_id, datetime_range, max_cloud_cover, limit, description, license, creators, ...)` runs a STAC search, collects bands from `eo:bands` and `raster:bands`, converts center wavelengths from micrometers to nanometers, preserves provider-native `contentUrl` for each FileObject, and creates a RecordSet named `scenes` with 7 fields: `scene_id` (Text), `collection` (Text), `datetime` (DateTime), `cloud_cover` (Float), `epsg` (Integer), `image_url` (URL), `asset_urls` (array of URL). The response includes `json_ld`, `asset_urls`, `asset_count`, `search_summary`, and validation status.
+- `create_geocroissant_from_stac_sources(name, sources, ...)` runs independent STAC searches from a `sources` array. Each source needs `catalog_id`, `collection_id`, `bbox`; optional `source_id`, `datetime_range`, `max_cloud_cover`, `limit` (1 to 50). Output has one RecordSet per source, ids like `scenes_source_id`, each with two extra fields `source_id` and `catalog_id`. Distribution ids are prefixed with the record set id. No band or spectral metadata is merged across sources.
+
+## Inspection, structure, and records
+
+- `validate_croissant(jsonld_path, jsonld_url, jsonld_content)` validates with `mlcroissant`. Exactly one input is required. Returns `valid`, `errors`, `warnings`, `conforms_to`, `is_geospatial`.
+- `inspect_geocroissant(jsonld_path, jsonld_url, jsonld_content)` summarizes name, `conformsTo`, version, description, license, creators, geospatial properties, distribution, and record sets.
+- `get_structure_graph(jsonld_path, jsonld_url, jsonld_content)` returns nodes (`Metadata`, `FileObject`, `FileSet`, `RecordSet`, `Field`) and directed edges from `mlcroissant`'s graph.
+- `list_record_sets(jsonld_path, jsonld_url, jsonld_content)` lists each RecordSet with id, field count, fields, and declared row count.
+- `get_records_preview(record_set, limit, filters, jsonld_path, jsonld_url, jsonld_content)` materializes rows via `Dataset.records`. `limit` is 1 to 100, default 5. Inline `cr:data` rows need no download; remote file reads may need credentials.
+- `extract_distribution_urls(jsonld_path, jsonld_url, jsonld_content)` returns each distribution entry with `contentUrl`, encoding formats, sizes, checksums, include patterns, and container references.
+- `get_geocroissant_spec_reference(topic)` returns reference text. `topic` is `overview`, `context`, `properties`, `rai`, `example`, `python-api`, or `all`.

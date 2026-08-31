@@ -1,0 +1,14 @@
+---
+title: "Authentication Interest Group"
+sidebarTitle: "Auth"
+---
+
+This group is GeoCroissant relevant. It tracks how clients handle auth for STAC endpoints that need it. `HarshShinde0/geocr_mcp` ships only two public catalogs but allows a custom file via `GEOCR_CATALOGS_CONFIG`.
+
+## Topics
+
+- Tokens for hosts such as Microsoft Planetary Computer or NASA Earthdata when a catalog sits behind auth. The default catalogs `earth-search` and `veda` in `src/geocr_mcp_server/config/catalogs.yaml` are public and need no token.
+- Where credentials live. The code does not put secrets into generated GeoCroissant `contentUrl` values. Those values stay provider-native as built in `src/geocr_mcp_server/eo.py:415` and `src/geocr_mcp_server/eo.py:449`. Keep any `s3://` or `https://` signing outside the JSON-LD or handle it at the storage layer.
+- Non leakage. The server reads `GEOCR_CATALOGS_CONFIG` as a local file path in `src/geocr_mcp_server/catalogs.py:21`. It does not log its content. Geocoding uses a fixed `User-Agent` in `src/geocr_mcp_server/geocoding.py:8` and no auth header.
+
+This interest group does not own code. It collects requirements. If auth handling becomes needed for a new catalog, open an issue at `https://github.com/HarshShinde0/geocr_mcp/issues`.

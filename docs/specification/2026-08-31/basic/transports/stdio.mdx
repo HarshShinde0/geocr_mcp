@@ -1,0 +1,38 @@
+---
+title: stdio
+---
+
+<div id="enable-section-numbers" />
+
+In the stdio transport the client launches `geocr-mcp-server` as a subprocess. The two ends talk over standard streams.
+
+- The server reads JSON-RPC messages from `stdin` and writes them to `stdout`.
+- Each message is one JSON-RPC request, notification or response per line. Messages must not contain embedded newlines.
+- The server may write UTF-8 logs to `stderr` for any level. The client should not treat `stderr` as an error.
+- The server must not write anything to `stdout` that is not a valid MCP message, and the client must not write anything invalid to `stdin`.
+
+The wire format is one newline delimited JSON-RPC message per line over a reliable bidirectional byte stream. It works unchanged over Unix domain sockets or TCP for custom transports.
+
+## Sending messages
+
+The client writes requests and notifications to the server `stdin`, one per line. The client must not write responses.
+
+## Receiving messages
+
+The server writes responses correlated by `id`, plus request scoped notifications such as `notifications/progress` and `notifications/message`, and subscription notifications for `subscriptions/listen`. The server must not write requests to `stdout`; server to client input goes through `InputRequiredResult` as described in [Multi round-trip requests](/specification/2026-08-31/basic/patterns/mrtr).
+
+## Request metadata
+
+All metadata for stdio is in the JSON-RPC body under `_meta.io.modelcontextprotocol/*`. There is no header layer.
+
+## Cancellation
+
+To cancel, the client sends `notifications/cancelled` with the request id. The server should stop work and must not send further messages for that request.
+
+## Shutdown
+
+The client should close the input stream and wait for the server to exit, then terminate the process if it does not exit. On POSIX the escalation is `SIGTERM` then `SIGKILL`. On Windows it is `TerminateProcess` or job objects. The server should exit when `stdin` closes.
+
+## Unexpected termination
+
+If the server exits, the client should restart it. In flight requests are lost and can be retried. Active `subscriptions/listen` streams must be re-established.

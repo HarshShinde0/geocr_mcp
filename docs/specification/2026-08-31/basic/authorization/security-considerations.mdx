@@ -1,0 +1,44 @@
+---
+title: Authorization security considerations
+sidebarTitle: Security considerations
+---
+
+<div id="enable-section-numbers" />
+
+MCP protocol reference. `geocr-mcp-server` does not handle OAuth itself, but deployments behind an OAuth proxy must follow these rules.
+
+## Audience binding
+
+Clients must send `resource` per RFC 8707 on authorization and token requests. Servers must validate that the token was issued for them and must reject tokens with a different audience.
+
+## Token theft
+
+Clients and servers must store tokens securely. Authorization servers should issue short lived access tokens and rotate refresh tokens for public clients.
+
+## Communication security
+
+All authorization endpoints must use HTTPS. Redirect URIs must be `localhost` or HTTPS.
+
+## Authorization code protection
+
+Clients must use PKCE with `S256` and must verify that the authorization server advertises `code_challenge_methods_supported` before starting the flow. If that field is absent, clients must not proceed. Servers that support OpenID Connect discovery should include it.
+
+## Mix-up attacks
+
+A client that talks to several authorization servers could be tricked into sending a code issued by one server to another. Clients must record the issuer from validated metadata and validate the `iss` parameter in the authorization response per RFC 9207.
+
+## Open redirection
+
+Clients must have redirect URIs registered. Servers must validate exact redirect URIs and clients should use and verify `state`.
+
+## Client ID metadata document security
+
+Servers that fetch client metadata documents should consider SSRF risks, warn for `localhost` only redirect URIs, and may enforce domain based trust policies.
+
+## Confused deputy
+
+A server that proxies to upstream APIs must not pass through the client token. It must obtain its own token for the upstream API.
+
+## Privilege restriction
+
+Servers must validate tokens before processing the request and must not accept tokens intended for other resources. Clients must set `resource` so tokens are bound to the intended server.

@@ -1,0 +1,35 @@
+---
+title: "Charter template"
+sidebarTitle: "Charter template"
+---
+
+Use this template if you plan a working group or interest group that is specific to `HarshShinde0/geocr_mcp`. Most GeoCroissant work does not need a new group. Scope is small: 17 tools, two catalogs (`earth-search` and `veda`), and GeoCroissant generation in `src/geocr_mcp_server/eo.py` and `src/geocr_mcp_server/spec.py`. If the effort fits in an issue or pull request, keep it there.
+
+## Charter outline
+
+Copy the block below into a new `community/working-groups/<name>.mdx` or `community/interest-groups/<name>.mdx` draft and fill each field.
+
+```markdown
+# [Group name] charter
+
+## 1. Mission and scope
+One paragraph. State the exact problem inside HarshShinde0/geocr_mcp, for example STAC catalog health checks or band metadata handling.
+
+## 2. Deliverables
+List concrete outputs with paths where possible, for example code in src/geocr_mcp_server/, docs in docs/, tests in tests/.
+
+## 3. Leadership and membership
+- Chairs: [name, GitHub handle]
+- Maintainers involved: [names]
+- Meeting cadence and public notes link: [schedule]
+
+## 4. Decision making
+How the group reaches agreement and when it escalates to core maintainers. Note that merges need maintainer approval per community/governance.mdx.
+
+## 5. Relation to upstream
+State if this is GeoCroissant specific or if it tracks upstream MCP. For the latter note that geocr-mcp does not set MCP-wide policy.
+```
+
+## Note on existing groups
+
+Many groups listed under `community/working-interest-groups.mdx` are stubs that map to upstream MCP groups. Check that page first. If a group has no relevance to GeoCroissant, leave it marked as upstream only and link to the MCP repo rather than creating a new charter here.

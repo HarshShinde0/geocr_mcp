@@ -1,0 +1,26 @@
+---
+title: "Base protocol"
+sidebarTitle: "Base protocol"
+---
+
+`geocr-mcp-server` implements the MCP base protocol with JSON-RPC 2.0 and per-request metadata in `_meta`. The protocol version for this release is `2026-08-31`.
+
+## Characteristics
+
+- Message format is JSON-RPC 2.0 with `jsonrpc: "2.0"`.
+- Transports are `stdio` and `streamable-http` at `/mcp` (`https://geocr-mcp-server.onrender.com/mcp` when hosted). The server does not expose the legacy `GET /sse` endpoint.
+- Every request carries `io.modelcontextprotocol/protocolVersion` and client info in `_meta`. Over streamable HTTP the same version is mirrored in the `MCP-Protocol-Version` header and the two values must match.
+
+<CardGroup cols={3}>
+  <Card title="Transports" icon="arrows-split-up-and-left" href="/specification/2026-08-31/basic/transports">
+    Framing for stdio and streamable HTTP.
+  </Card>
+
+  <Card title="Lifecycle" icon="arrows-rotate" href="/specification/2026-08-31/basic/lifecycle">
+    Discovery and capability flow without initialize handshake.
+  </Card>
+
+  <Card title="Versioning" icon="code-branch" href="/specification/2026-08-31/basic/versioning">
+    Version negotiation and backward compatibility.
+  </Card>
+</CardGroup>

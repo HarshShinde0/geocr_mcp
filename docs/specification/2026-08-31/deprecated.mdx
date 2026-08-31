@@ -1,0 +1,24 @@
+---
+title: Deprecated features
+---
+
+<div id="enable-section-numbers" />
+
+This page lists deprecated features that remain in the MCP specification. New implementations should not adopt them. GeoCroissant does not reintroduce deprecated GeoCroissant fields. No GeoCroissant property in `reference.py` is deprecated in `2026-08-31`.
+
+## Deprecated in MCP
+
+| Feature | Deprecated in | Migration path | Earliest removal |
+| --- | --- | --- | --- |
+| [Roots](/specification/2026-08-31/client/roots) | `2026-08-31` | Pass paths via tool arguments | First revision on or after 2027-07-28 |
+| [Sampling](/specification/2026-08-31/client/sampling) | `2026-08-31` | Call the LLM provider directly | First revision on or after 2027-07-28 |
+| [Logging](/specification/2026-08-31/server/utilities/logging) | `2026-08-31` | Logs go to `stderr` for stdio, OpenTelemetry for observability | First revision on or after 2027-07-28 |
+| Dynamic client registration | `2026-08-31` | Use client ID metadata documents | First revision on or after 2027-07-28 |
+| `includeContext: "thisServer"` / `"allServers"` | `2025-11-25` | Omit the field or use `"none"` | Follows sampling |
+| HTTP+SSE transport | `2025-03-26` | Use streamable HTTP at `/mcp` | Three months after SEP-2596 reaches final |
+
+`geocr-mcp-server` does not implement roots, sampling, elicitation, resources or prompts. It implements tools only, so these deprecations have no effect on GeoCroissant documents.
+
+## Removed
+
+No feature has been removed under this policy yet.

@@ -1,0 +1,222 @@
+---
+title: "Connect local servers"
+sidebarTitle: "Connect local servers"
+---
+
+Run `geocr-mcp-server` as a local subprocess over stdio. Python 3.10 or newer is required.
+
+## Prerequisites
+
+- Python 3.10 or higher.
+- `uv` or `pip`.
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+## Installation
+
+No checkout is needed for normal use:
+
+```bash
+uvx --from "geocr-mcp @ git+https://github.com/HarshShinde0/geocr_mcp.git@main" geocr-mcp-server
+```
+
+To install into the active environment:
+
+```bash
+pip install git+https://github.com/HarshShinde0/geocr_mcp.git@main
+```
+
+Docker also works (see connect remote servers):
+
+```bash
+docker build -t geocr-mcp-server .
+docker run -i --rm geocr-mcp-server
+```
+
+## Client configuration
+
+All seven clients below use different filenames and remote-server keys. Use the example for your client rather than copying between clients. Hosted endpoint for every client is `https://geocr-mcp-server.onrender.com/mcp`.
+
+<Tabs>
+  <Tab title="Claude Desktop">
+    File locations:
+    - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+    - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+    - Linux: `~/.config/Claude/claude_desktop_config.json`
+
+    For a local server:
+
+    ```json
+    {
+      "mcpServers": {
+        "geocr-mcp": {
+          "command": "uvx",
+          "args": ["geocr-mcp-server"]
+        }
+      }
+    }
+    ```
+
+    Hosted servers are added through **Customize > Connectors** with URL `https://geocr-mcp-server.onrender.com/mcp`. Restart Claude Desktop to load the 17 tools.
+
+    With a local install:
+
+    ```json
+    {
+      "mcpServers": {
+        "geocr-mcp": {
+          "command": "python",
+          "args": ["-m", "geocr_mcp_server", "--transport", "stdio"]
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Cursor">
+    File is `.cursor/mcp.json` with top-level `mcpServers`. Hosted uses `url`, local uses `command` and `args`.
+
+    Hosted:
+
+    ```json
+    {
+      "mcpServers": {
+        "geocr-mcp": {
+          "url": "https://geocr-mcp-server.onrender.com/mcp"
+        }
+      }
+    }
+    ```
+
+    Local:
+
+    ```json
+    {
+      "mcpServers": {
+        "geocr-mcp-local": {
+          "command": "uv",
+          "args": ["--directory", "/absolute/path/to/croissant/geocr_mcp", "run", "geocr-mcp-server"],
+          "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="VS Code">
+    File is `.vscode/mcp.json` with top-level `servers`. Hosted uses `type: "http"` and `url`, local uses `type: "stdio"`.
+
+    Hosted:
+
+    ```json
+    {
+      "servers": {
+        "geocr-mcp": {
+          "type": "http",
+          "url": "https://geocr-mcp-server.onrender.com/mcp"
+        }
+      }
+    }
+    ```
+
+    Local uses `uv` as shown in the README. Run **MCP: List Servers** to check the connection.
+  </Tab>
+
+  <Tab title="Antigravity">
+    File is `.agents/mcp_config.json` with top-level `mcpServers`. Hosted key is `serverUrl`.
+
+    ```json
+    {
+      "mcpServers": {
+        "geocr-mcp": {
+          "serverUrl": "https://geocr-mcp-server.onrender.com/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Kiro">
+    File is `.kiro/settings/mcp.json` with `mcpServers`. Hosted uses `url`, local uses `command`.
+
+    ```json
+    {
+      "mcpServers": {
+        "geocr-mcp": {
+          "url": "https://geocr-mcp-server.onrender.com/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Claude Code">
+    File is `.mcp.json` with `mcpServers`. Hosted uses `type: "http"`.
+
+    ```json
+    {
+      "mcpServers": {
+        "geocr-mcp": {
+          "type": "http",
+          "url": "https://geocr-mcp-server.onrender.com/mcp"
+        }
+      }
+    }
+    ```
+
+    Also `claude mcp add --transport http --scope project geocr-mcp https://geocr-mcp-server.onrender.com/mcp`.
+  </Tab>
+
+  <Tab title="OpenCode">
+    File is `opencode.json` with top-level `mcp`. Hosted uses `type: "remote"`, local uses `type: "local"`.
+
+    ```json
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "mcp": {
+        "geocr-mcp": {
+          "type": "remote",
+          "url": "https://geocr-mcp-server.onrender.com/mcp",
+          "timeout": 60000
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Inspector and CLI">
+    ```bash
+    uvx geocr-mcp-server --help
+    npx @modelcontextprotocol/inspector uvx geocr-mcp-server
+    ```
+  </Tab>
+</Tabs>
+
+## Environment variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `FASTMCP_LOG_LEVEL` | `WARNING` | Set stderr logging to `DEBUG`, `INFO`, `WARNING`, or `ERROR`. |
+| `GEOCR_OUTPUT_DIR` | System temp directory | Where `output_filename` is written; names are reduced to basename. |
+| `GEOCR_CATALOGS_CONFIG` | Bundled `src/geocr_mcp_server/config/catalogs.yaml` | Load catalog definitions from another YAML file. |
+| `GEOCR_HOST` | `127.0.0.1` locally; `0.0.0.0` in cloud | Bind address for HTTP. |
+| `GEOCR_PORT` | `8000` | Port for HTTP. |
+| `GEOCR_TRANSPORT` | `stdio` locally; `streamable-http` in cloud | Select the MCP transport. |
+
+## Verifying
+
+Call `ping` and expect `pong`. Then call `list_eo_catalogs` and check for `earth-search` at `https://earth-search.aws.element84.com/v1` and `veda` at `https://openveda.cloud/api/stac`. For network and file handling, note that all STAC, geocoding, and preview calls hit live services, and generated files are written inside `GEOCR_OUTPUT_DIR` with basename only.
+
+## Development
+
+From `geocr_mcp`:
+
+```bash
+uv venv
+uv sync --all-groups
+uv run ruff check src tests
+uv run python -m pytest --cov --cov-branch
+uv run python -m pytest -o addopts='' -m live
+```

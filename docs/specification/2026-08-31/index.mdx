@@ -1,0 +1,40 @@
+---
+title: "GeoCroissant specification"
+sidebarTitle: "Specification overview"
+---
+
+<div id="enable-section-numbers" />
+
+The GeoCroissant specification defines the JSON-LD vocabulary and MCP bindings for Earth observation datasets. It extends Croissant 1.1 with geospatial properties under the `geocr` prefix.
+
+## What this specification covers
+
+This is version `2026-08-31`. It describes a GeoCroissant dataset and the `geocr-mcp-server` that produces and validates it.
+
+A GeoCroissant dataset is a Croissant 1.1 dataset that also conforms to `http://mlcommons.org/croissant/geo/1.0`. When Responsible AI properties are present it also conforms to `http://mlcommons.org/croissant/RAI/1.0`. The document uses the context from `spec.official_context()` and includes `geocr` and `rai` prefixes.
+
+The server translates live STAC search results into that document. It keeps provider-native `contentUrl` values, builds a `scenes` RecordSet with seven fields, and validates the result with `mlcroissant`. The server exposes 17 tools and no resources or prompts.
+
+## Structure
+
+<CardGroup cols={3}>
+  <Card title="Architecture" icon="sitemap" href="/specification/2026-08-31/architecture/index">
+    Dataset, distribution and RecordSet model.
+  </Card>
+
+  <Card title="Base protocol" icon="network-wired" href="/specification/2026-08-31/basic">
+    Transports, lifecycle and version negotiation.
+  </Card>
+
+  <Card title="Server features" icon="server" href="/specification/2026-08-31/server">
+    Tools and utilities. This server implements tools only.
+  </Card>
+
+  <Card title="Schema reference" icon="code" href="/specification/2026-08-31/schema">
+    Context, conformance and property tables.
+  </Card>
+
+  <Card title="Changelog" icon="clock-rotate-left" href="/specification/2026-08-31/changelog">
+    Changes in 2026-08-31.
+  </Card>
+</CardGroup>

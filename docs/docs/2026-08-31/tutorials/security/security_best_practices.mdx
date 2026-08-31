@@ -1,0 +1,28 @@
+---
+title: "Security best practices"
+sidebarTitle: "Security best practices"
+---
+
+## File writes
+
+`output_filename` is reduced to its basename and written under `GEOCR_OUTPUT_DIR` or a temp directory. This blocks path traversal; `../../etc/passwd` becomes `passwd` inside the output directory. Prefer passing `output_filename` over returning large `json_ld` strings in chat. When you do return JSON-LD, avoid adding secrets to it.
+
+## Inputs that accept JSON-LD
+
+`validate_croissant`, `inspect_geocroissant`, `get_structure_graph`, `list_record_sets`, `get_records_preview`, and `extract_distribution_urls` accept exactly one of `jsonld_path`, `jsonld_url`, or `jsonld_content`. Supplying more than one raises an error. Passing an empty value also raises.
+
+## Catalog scope
+
+The server only queries catalogs listed in `config/catalogs.yaml` (`earth-search` and `veda` by default). It does not accept arbitrary STAC URLs as tool arguments. This limits server-side requests to known hosts.
+
+## Cloud hosts
+
+STAC asset URLs are provider-native `https://` and `s3://` links. Some buckets are requester-pays. Document this in `data_collection` or `data_limitations` when relevant, and do not commit signed URLs with short expiry.
+
+## Logging
+
+Logs go to `stderr` at `FASTMCP_LOG_LEVEL` (default `WARNING`). Stdout stays clean for JSON-RPC. Do not log tokens or signed URLs.
+
+## Validation
+
+Run `validate_croissant` after editing any generated document and check `errors` and `warnings` before publishing. Validation does not verify that remote assets exist or are reachable.

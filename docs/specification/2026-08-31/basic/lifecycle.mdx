@@ -1,0 +1,22 @@
+---
+title: "Lifecycle"
+sidebarTitle: "Lifecycle"
+---
+
+This version is `2026-08-31` for `geocr-mcp-server` at `https://geocr-mcp-server.onrender.com/mcp`. It uses per-request metadata and does not use an `initialize` handshake with `protocolVersion` in params.
+
+## Discovery
+
+1. Client sends `server/discover` with its preferred version in `_meta.io.modelcontextprotocol/protocolVersion`.
+2. Server returns supported versions and capabilities. For `geocr-mcp-server` capabilities include `tools` with `listChanged: true` and no `resources` or `prompts`.
+3. Client selects a mutually supported version for subsequent requests.
+
+Legacy clients that still send `initialize` receive an error. The server does not maintain a session.
+
+## Operation
+
+After discovery the client calls `tools/list` and `tools/call` for EO discovery and GeoCroissant generation. Tool responses include validation results. Logs go to `stderr` for stdio and to the HTTP response stream for streamable HTTP.
+
+## Shutdown
+
+For stdio the client closes the pipe and the server exits when `stdin` closes. For streamable HTTP each request is a single `POST /mcp` and there is no persistent session to close. Cancelling a request closes its response stream.

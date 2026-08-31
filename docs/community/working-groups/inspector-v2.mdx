@@ -1,0 +1,15 @@
+---
+title: "Inspector Working Group"
+sidebarTitle: "Inspector v2"
+---
+
+This group is upstream only. `HarshShinde0/geocr_mcp` does not maintain a fork of MCP Inspector for geospatial types.
+
+## How geocr-mcp is tested instead
+
+- `pytest` suites in `tests/` for catalog lookup, bbox validation, tool wiring, and file path handling.
+- Live STAC checks with `pystac-client` in `src/geocr_mcp_server/eo.py:48` `search_collections` and `src/geocr_mcp_server/eo.py:180` `search_scenes`. Counts are capped at 50 per call.
+- Schema checks with `mlcroissant` via `src/geocr_mcp_server/tools.py:545` `validate_croissant` and `src/geocr_mcp_server/common.py:316` `summarize_metadata`. The validator covers JSON syntax, JSON-LD expansion, and structure graph. It does not fetch remote assets.
+- Structural inspection via `get_structure_graph` and `list_record_sets` as defined in `src/geocr_mcp_server/tools.py:681` and `751`.
+
+For MCP Inspector features such as map rendering of bboxes or graph visualization, follow upstream MCP.

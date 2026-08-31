@@ -1,0 +1,77 @@
+---
+title: STAC collection types
+sidebarTitle: Collection types
+---
+
+The GeoCroissant STAC Catalog Registry does not publish npm or PyPI packages. It maps catalog ids to STAC APIs and exposes the collection types that each API actually serves. This page lists the types you will see when you call `search_eo_datasets` and how their assets and band metadata map to GeoCroissant.
+
+## earth-search collection types
+
+The snapshot in `src/geocr_mcp_server/config/catalogs.yaml:23` was audited on 2026-08-23 against `GET https://earth-search.aws.element84.com/v1/collections`. It contains nine ids. Live discovery may show a new id before the snapshot is refreshed, but these nine cover the current archive.
+
+### Sentinel-2 optical
+
+* `sentinel-2-c1-l2a` - Collection 1 Level-2A surface reflectance, the current baseline. Bands such as B02, B03, B04, B08 have `eo:bands` with center wavelength and full width half max. This is the collection to use for new work.
+* `sentinel-2-l2a` - earlier Level-2A processing line. Same band set as above but with different processing metadata.
+* `sentinel-2-l1c` - Level-1C top of atmosphere reflectance. Useful when you need TOA values.
+* `sentinel-2-pre-c1-l2a` - pre Collection 1 Level-2A. Useful for long time series that extend before the Collection 1 reprocessing.
+
+All four expose `eo:cloud_cover` and asset keys such as `blue`, `green`, `red`, `nir`, `swir16`, `swir22`, `visual`, and `scl`. The generator maps `eo:bands` to GeoCroissant `spectralBands` where `centerWavelength` and `bandwidth` are preserved.
+
+### Landsat
+
+* `landsat-c2-l2` - Landsat Collection 2 Level-2 surface reflectance and surface temperature. This rolls up Landsat 8 and 9 OLI/TIRS into one collection. Asset keys follow the Landsat band naming such as `red`, `green`, `blue`, `nir08`, `swir16`, `swir22`, and `lwir11`. `eo:cloud_cover` is available.
+
+### Sentinel-1 SAR
+
+* `sentinel-1-grd` - Sentinel-1 Ground Range Detected amplitude. Assets are polarizations such as `vv` and `vh`. There is no `eo:cloud_cover`. Bands are described through `sar:` and `raster:bands` with data type and nodata, and the scaffold maps them to GeoCroissant band configuration.
+
+### Copernicus DEM
+
+* `cop-dem-glo-30` - 30 meter global DEM. Single band elevation.
+* `cop-dem-glo-90` - 90 meter global DEM. Same structure at coarser sampling.
+
+Both DEM collections have assets such as `data` with `raster:bands` that carry `data_type`, `scale`, `offset`, and `spatial_resolution`. GeoCroissant records the CRS and spatial resolution from this metadata.
+
+### NAIP
+
+* `naip` - National Agriculture Imagery Program aerial imagery over the US. Four band imagery with `red`, `green`, `blue`, `nir`. High spatial resolution, irregular temporal cadence. Assets carry `eo:bands` similar to Sentinel-2.
+
+## veda thematic collections
+
+VEDA at `https://openveda.cloud/api/stac` hosts more than 200 thematic collections. The snapshot in `src/geocr_mcp_server/config/catalogs.yaml:42` lists them for reference, but `search_eo_datasets` with `catalog_id: "veda"` reads the live set. Examples include:
+
+* `hls-ndvi`, `hls-l30-002-ej-reprocessed`, `hls-s30-002-ej-reprocessed` - Harmonized Landsat Sentinel derived indices
+* `MODIS_Terra_L3_NDVI_16Day`, `modis-annual-lai-2003-2020` - MODIS vegetation products
+* `GPM_3IMERGDF`, `nldas2`, `smap-L3-soil-moisture-AM-v1` - precipitation and soil moisture
+* `landsat-c2l2-sr-antarctic-glaciers-thwaites`, `blizzard-era5-2m-temp`, `co2-mean` - cryosphere, reanalysis, and composition
+
+Veda collections vary in whether they expose `eo:cloud_cover`, which band convention they use, and which asset keys are present. Always call `get_eo_dataset_details` for the collection you plan to use. The detail response shows `summaries`, `item_assets`, and `raster:bands` so you can see the actual keys and band properties before you search scenes.
+
+## How assets and bands map to GeoCroissant
+
+STAC item assets become GeoCroissant distribution entries. The generator in `src/geocr_mcp_server/eo.py` selects provider native URIs and keeps their scheme. Common mappings:
+
+* Asset keys - keys such as `red`, `nir`, `visual` become `contentUrl` entries under `distribution`. Each entry preserves `encodingFormat` from the STAC asset.
+* eo:bands - optical collections expose `eo:bands` with `name`, `common_name`, `center_wavelength`, and `full_width_half_max`. These map to `geocr:spectralBands` with `centerWavelength` and `bandwidth` in nanometers. Ordered `band_names` preserve the provider order.
+* raster:bands - SAR and DEM collections expose `raster:bands` with `data_type`, `nodata`, `scale`, and `offset`. These map to band configuration and field data type information in the scaffold. For SAR, a single distribution may have two polarization assets.
+
+To see the mapping for a specific collection, inspect it first:
+
+```json
+{
+  "tool": "get_eo_dataset_details",
+  "arguments": {
+    "catalog_id": "earth-search",
+    "collection_id": "landsat-c2-l2"
+  }
+}
+```
+
+Look at `item_assets` for the asset keys and at `summaries["eo:bands"]` or `summaries["raster:bands"]` for band metadata. The same fields appear in the GeoCroissant document after you call `create_geocroissant_from_stac`.
+
+## Choosing a collection
+
+* Use `sentinel-2-c1-l2a` for current Sentinel-2 work. Use `landsat-c2-l2` for longer US archive work.
+* Use `sentinel-1-grd` for SAR and `cop-dem-glo-30` for elevation. Do not apply `max_cloud_cover` to these.
+* Use veda thematic collections when you need derived products such as NDVI, LAI, or precipitation. Verify temporal coverage and resolution in `get_eo_dataset_details` before you choose a bbox and date range.

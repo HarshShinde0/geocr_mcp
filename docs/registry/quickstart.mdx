@@ -1,0 +1,193 @@
+---
+title: "Quickstart: search the catalog registry"
+sidebarTitle: "Quickstart"
+---
+
+This guide shows how to list catalogs and search datasets through the GeoCroissant STAC Catalog Registry. The registry has two catalogs by default: `earth-search` and `veda`. Live discovery queries the provider API. The YAML snapshot in `src/geocr_mcp_server/config/catalogs.yaml:8` is informational only.
+
+## Prerequisites
+
+* Python 3.10 or later
+* `geocr-mcp-server` installed with `pip install geocr-mcp` or run with `uvx geocr-mcp`
+* A MCP client that can call tools, or a plain Python shell for direct calls
+
+## 1. List catalogs
+
+The tool `list_eo_catalogs` returns every catalog registered in `src/geocr_mcp_server/catalogs.py:107`. No arguments are needed. It reports the id, name, URL, description, and the configured collection count.
+
+Python via the MCP server:
+
+```python
+from geocr_mcp_server.catalogs import list_catalogs
+
+for cat in list_catalogs():
+    print(cat["id"], cat["url"], cat["configured_collection_count"])
+# earth-search https://earth-search.aws.element84.com/v1 9
+# veda https://openveda.cloud/api/stac 200+
+```
+
+MCP tool call:
+
+```json
+{
+  "tool": "list_eo_catalogs",
+  "arguments": {}
+}
+```
+
+Response shape:
+
+```json
+{
+  "catalogs": [
+    {
+      "id": "earth-search",
+      "name": "Earth Search (Element84 / AWS Open Data)",
+      "url": "https://earth-search.aws.element84.com/v1",
+      "description": "STAC API over AWS Open Data EO assets...",
+      "collection_discovery": "live",
+      "configured_collection_count": 9
+    },
+    {
+      "id": "veda",
+      "name": "NASA VEDA",
+      "url": "https://openveda.cloud/api/stac",
+      "collection_discovery": "live",
+      "configured_collection_count": 289
+    }
+  ]
+}
+```
+
+## 2. Search datasets
+
+Use `search_eo_datasets` to page through collections from a live STAC API. It is defined in `src/geocr_mcp_server/tools.py:71` and it calls the provider directly. No keyword inference is applied.
+
+Parameters:
+
+* `catalog_id` - registered id such as `earth-search` or `veda`. If you omit it, the server uses the `default_catalog` from `src/geocr_mcp_server/config/catalogs.yaml:8`, which is `earth-search`.
+* `limit` - number of collections to return, from 1 to 500. Use 500 to inventory a catalog in one call.
+* `offset` - zero based offset for pagination.
+
+Example: list the first 15 earth-search collections:
+
+```json
+{
+  "tool": "search_eo_datasets",
+  "arguments": {
+    "catalog_id": "earth-search",
+    "limit": 15,
+    "offset": 0
+  }
+}
+```
+
+Example: inventory veda in Python:
+
+```python
+import asyncio
+from geocr_mcp_server.tools import GeoCroissantTools
+from mcp.server.fastmcp import Context
+
+# limit is 1-500, offset moves the window
+# result["count"] tells you how many collections came back
+```
+
+For a shell check without the MCP client, you can query the STAC API directly to see what live discovery will return:
+
+```bash
+curl -s "https://earth-search.aws.element84.com/v1/collections?limit=15" | jq '.collections[].id'
+curl -s "https://openveda.cloud/api/stac/collections?limit=15" | jq '.collections[].id'
+```
+
+## 3. Inspect one dataset
+
+Pick a collection id from the previous step and fetch full provider metadata with `get_eo_dataset_details` in `src/geocr_mcp_server/tools.py:109`. Pass the exact `collection_id` and the same `catalog_id`.
+
+```json
+{
+  "tool": "get_eo_dataset_details",
+  "arguments": {
+    "catalog_id": "earth-search",
+    "collection_id": "sentinel-2-c1-l2a"
+  }
+}
+```
+
+The response contains spatial and temporal extent, providers, `summaries`, `item_assets`, `links`, and band definitions. Check `summaries` and `item_assets` to decide whether `eo:cloud_cover` is available and which asset keys you will want in GeoCroissant distribution.
+
+For veda, the same call works with a thematic id:
+
+```json
+{
+  "tool": "get_eo_dataset_details",
+  "arguments": {
+    "catalog_id": "veda",
+    "collection_id": "hls-ndvi"
+  }
+}
+```
+
+## 4. Count and search scenes
+
+Once you have a collection, count availability before you generate metadata. Both tools require a bbox in `[min_lon, min_lat, max_lon, max_lat]` in EPSG:4326.
+
+Count scenes over Delhi for a 10 day window:
+
+```json
+{
+  "tool": "count_eo_scenes",
+  "arguments": {
+    "catalog_id": "earth-search",
+    "collections": ["sentinel-2-c1-l2a"],
+    "bbox": [76.8, 28.4, 77.3, 28.9],
+    "datetime_range": "2023-06-01/2023-06-10",
+    "max_cloud_cover": 20
+  }
+}
+```
+
+Search for the first five scenes:
+
+```json
+{
+  "tool": "search_eo_scenes",
+  "arguments": {
+    "catalog_id": "earth-search",
+    "collections": ["sentinel-2-c1-l2a"],
+    "bbox": [76.8, 28.4, 77.3, 28.9],
+    "datetime_range": "2023-06-01/2023-06-10",
+    "max_cloud_cover": 20,
+    "limit": 5
+  }
+}
+```
+
+Use `max_cloud_cover` only when the collection metadata supports `eo:cloud_cover`. Optical collections such as `sentinel-2-c1-l2a` and `landsat-c2-l2` do. SAR collections such as `sentinel-1-grd` and DEM collections such as `cop-dem-glo-30` do not.
+
+## 5. Generate GeoCroissant
+
+Pass the same bbox and collection to `create_geocroissant_from_stac`. The server builds coverage, CRS, band metadata, provider-native asset URIs, and one inline record per scene, then validates with `mlcroissant`.
+
+```json
+{
+  "tool": "create_geocroissant_from_stac",
+  "arguments": {
+    "name": "delhi-sentinel2-june-2023",
+    "catalog_id": "earth-search",
+    "collections": ["sentinel-2-c1-l2a"],
+    "bbox": [76.8, 28.4, 77.3, 28.9],
+    "datetime_range": "2023-06-01/2023-06-10",
+    "max_cloud_cover": 20,
+    "limit": 5
+  }
+}
+```
+
+The response contains `json_ld`, a validation report, and `asset_urls`. For multi catalog work, use `create_geocroissant_from_stac_sources` with independent sources that each specify `catalog_id`, `collection_id`, and `bbox`.
+
+## Pagination tips
+
+* Start with `limit: 15` for interactive search, then raise to 100 or 500 for an inventory.
+* Increase `offset` by `limit` to fetch the next page. Stop when the returned `count` is less than `limit`.
+* Always call `get_eo_dataset_details` before you choose filters. Collection metadata tells you which queryables are valid.

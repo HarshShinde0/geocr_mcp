@@ -1,0 +1,14 @@
+---
+title: "Transports Working Group"
+sidebarTitle: "Transports"
+---
+
+This group is partly shared with upstream. `HarshShinde0/geocr_mcp` supports two transports and does not extend the spec.
+
+## What this repo implements
+
+- Transports are `stdio` and `streamable-http`. The choice is set by `GEOCR_TRANSPORT` in `src/geocr_mcp_server/server.py:122`. The default is `stdio` locally and `streamable-http` in cloud where `RENDER` or `GEOCR_TRANSPORT` points there.
+- Host and port are `GEOCR_HOST` and `GEOCR_PORT` in the same file, with defaults `127.0.0.1` and `8000` locally.
+- Logging goes to `stderr` so `stdout` can carry the MCP channel on `stdio`. This matches the behavior noted in `README.md`.
+
+No custom framing, compression, or SSE-only tuning is added here. Scene payloads are kept small by capping `limit` at 50 in `src/geocr_mcp_server/eo.py:180` and by allowing `output_filename` to write JSON-LD to disk via `src/geocr_mcp_server/common.py:472`. For transport spec work such as reconnect or streaming, see upstream Model Context Protocol.

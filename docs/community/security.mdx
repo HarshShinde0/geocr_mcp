@@ -1,0 +1,28 @@
+---
+title: "Security policy"
+sidebarTitle: "Security"
+---
+
+This policy covers `HarshShinde0/geocr_mcp`. It focuses on the risks present in this codebase: local file handling, remote STAC calls, and geocoding requests. It does not replace upstream Model Context Protocol guidance for general MCP deployments.
+
+## Report a vulnerability
+
+Do not open a public issue for a security bug. Use GitHub security advisories at `https://github.com/HarshShinde0/geocr_mcp/security/advisories`. Include steps to reproduce, a sample payload, and expected impact. Maintainers acknowledge within 48 hours and set a disclosure plan.
+
+## What this project handles
+
+- Output file writes in `src/geocr_mcp_server/common.py:472` `secure_output_path`. Supplied `output_filename` values are reduced to basename and written inside `GEOCR_OUTPUT_DIR`. If that env var is unset the code falls back to `os.path.join(tempfile.gettempdir(), 'geocr-mcp')`. The directory is created with `mkdir(parents=True, exist_ok=True)`. Path traversal outside the directory is blocked by the basename rule.
+- Catalog config loading in `src/geocr_mcp_server/catalogs.py:17` `GEOCR_CATALOGS_CONFIG`. When set, the variable points to a YAML file on disk. The server reads that file with `yaml.safe_load`. Keep that file owned by you and not writable by untrusted users. The shipped file is `src/geocr_mcp_server/config/catalogs.yaml` with ids `earth-search` and `veda`.
+- STAC requests in `src/geocr_mcp_server/eo.py` and `src/geocr_mcp_server/catalogs.py`. The list of base URLs comes from the registry above, not from free form user input. Only `bbox`, `datetime_range`, `collections`, and `max_cloud_cover` come from the caller. `bbox` is checked in `src/geocr_mcp_server/eo.py:127` `_validated_bbox` to be `[min_lon, min_lat, max_lon, max_lat]` with longitudes in -180 to 180 and latitudes in -90 to 90 and `min_lat <= max_lat`.
+- Geocoding in `src/geocr_mcp_server/geocoding.py:11` `geocode_place`. Calls go to `https://nominatim.openstreetmap.org/search` with the user supplied `place_name`. That host is fixed in code. The `User-Agent` is `geocr-mcp/1.0 (https://github.com/HarshShinde0/geocr_mcp)`.
+- Asset URIs. Generated GeoCroissant preserves provider-native `contentUrl` values such as `https://` and `s3://`. The server does not fetch or rewrite those assets. `mlcroissant` validates JSON-LD structure at generation time. It does not check that remote assets exist or that access is authorized.
+
+## What to check before you ship changes
+
+- Any new file write must go through `secure_output_path` or enforce the same basename rule.
+- Any new network call must keep host allowlists in the registry or add a call to a fixed host. Do not fetch an unchecked URL supplied by the caller unless you add validation and tests.
+- Any new `GEOCR_*` env var must have a documented default in `README.md` and a single read site that is easy to review. Current vars are `GEOCR_OUTPUT_DIR`, `GEOCR_CATALOGS_CONFIG`, `GEOCR_HOST`, `GEOCR_PORT`, `GEOCR_TRANSPORT`.
+
+## Out of scope
+
+Validation errors from `mlcroissant` are not security issues. Rate limits or downtime on external STAC APIs are operational issues. Report them as normal bugs at `https://github.com/HarshShinde0/geocr_mcp/issues` with the catalog id and collection id.

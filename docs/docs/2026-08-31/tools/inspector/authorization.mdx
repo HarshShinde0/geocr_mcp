@@ -1,0 +1,50 @@
+---
+title: "Authorization"
+description: How the MCP Inspector handles OAuth for protected remote servers
+---
+
+`geocr-mcp-server` has no built-in OAuth. When you put it behind a protected HTTP endpoint, the Inspector can handle the OAuth flow.
+
+## Flow
+
+1. Inspector connects to the server URL. Server replies `401` with `WWW-Authenticate` pointing to protected-resource metadata.
+2. Inspector fetches authorization server metadata to find endpoints and grants.
+3. Inspector registers or identifies the client via dynamic registration, a static `client-id` and `client-secret`, a Client ID Metadata Document, or an enterprise IdP.
+4. Browser opens the authorization URL. Sign in and consent.
+5. Authorization server redirects to the Inspector callback with a code.
+6. Inspector exchanges the code for tokens, saves them, and retries the original request.
+
+## Callback URLs
+
+| Surface | Default callback |
+| --- | --- |
+| Web | `http://localhost:6274/oauth/callback` |
+| CLI and TUI | `http://127.0.0.1:6276/oauth/callback` |
+
+Override with `--callback-url` or `MCP_OAUTH_CALLBACK_URL`. The callback host must be loopback (`localhost`, `127.0.0.0/8`, `[::1]`).
+
+Register `http://127.0.0.1:6276/oauth/callback` on any IdP that needs pre-registered redirect URIs before using CLI or TUI.
+
+## Where tokens are stored
+
+| File | Contents |
+| --- | --- |
+| `~/.mcp-inspector/storage/oauth.json` | Tokens and client data, keyed by server URL |
+| `~/.mcp-inspector/storage/client.json` | Install-level client settings |
+| Catalog file `oauth` block | Per-server client id, secret, scopes |
+
+Path for `oauth.json` is `MCP_INSPECTOR_OAUTH_STATE_PATH`, then `<MCP_STORAGE_DIR>/oauth.json`, then the default above.
+
+## Mid-session re-authorization
+
+A server can return `401` or `403 insufficient_scope` for one request. The Inspector re-runs authorization and retries that request. For step-up it requests the union of old and new scopes. Web shows a banner; CLI prompts on stderr with `Proceed with step-up authorization? [y/N]`.
+
+## CI
+
+Use stored auth only:
+
+```bash
+mcp-inspector --cli "$URL" --transport http --stored-auth-only --method tools/list
+```
+
+Flags `--use-stored-auth`, `--wait-for-auth`, `--list-stored-auth`, `--print-handoff`, and `--relogin` control how stored tokens are used.

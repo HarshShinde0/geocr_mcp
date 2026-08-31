@@ -1,0 +1,78 @@
+---
+title: Downstream consumers
+sidebarTitle: Downstream consumers
+---
+
+The GeoCroissant STAC Catalog Registry is not an MCP server marketplace. Downstream consumers are tools that read the GeoCroissant datasets that geocr-mcp-server builds from STAC discovery results. This page describes the intended flow and what consumers should expect.
+
+## From registry to dataset to loader
+
+* geocr-mcp-server holds the registry in `src/geocr_mcp_server/config/catalogs.yaml:1` and exposes discovery through `list_eo_catalogs` and `search_eo_datasets` in `src/geocr_mcp_server/tools.py:61`.
+* The client selects a catalog and collection, then calls `count_eo_scenes` and `search_eo_scenes` with a bbox in `[min_lon, min_lat, max_lon, max_lat]` and an optional `datetime_range`.
+* The server generates GeoCroissant with `create_geocroissant_from_stac` or `create_geocroissant_from_stac_sources`. The result contains `json_ld`, `asset_urls`, and a validation report from `mlcroissant`.
+* A downstream loader reads the `json_ld` and materializes records.
+
+The registry stays in the middle as a catalog map. It does not host or proxy raster assets.
+
+## Primary consumer: mlcroissant
+
+`mlcroissant` is the reference loader for Croissant and GeoCroissant. It parses the JSON-LD, builds the structure graph, and yields records per `RecordSet`.
+
+Python example:
+
+```python
+from mlcroissant import Dataset
+
+# json_ld is the dict returned by create_geocroissant_from_stac
+dataset = Dataset(jsonld=json_ld)
+
+# list record sets that the document contains
+for rs in dataset.metadata.record_sets:
+    print(rs.id)
+
+# read inline scene rows without fetching COGs
+for row in dataset.records(record_set="records"):
+    print(row)
+```
+
+`list_record_sets` and `get_records_preview` in `src/geocr_mcp_server/tools.py:750` and `src/geocr_mcp_server/tools.py:798` wrap this same logic as MCP tools. `extract_distribution_urls` in `src/geocr_mcp_server/tools.py:890` lists the `contentUrl` entries that a loader will fetch when you request asset bytes.
+
+Remote assets remain on the provider. A loader must have the right credentials for the URI scheme:
+
+* `s3://` - AWS credentials from env, `~/.aws/credentials`, or an instance profile
+* `https://` - bearer token or signed URL, passed as a header or netrc entry
+
+The GeoCroissant document does not embed credentials.
+
+## Multi source consumers
+
+`create_geocroissant_from_stac_sources` keeps one `RecordSet` per source and one distribution entry per asset. It does not claim that sources are spatially or spectrally aligned. Downstream code should handle alignment.
+
+* Each source specifies `catalog_id`, `collection_id`, `bbox`, and optionally `datetime_range`, `max_cloud_cover`, and `limit`. Sources are searched independently.
+* The response contains `source_results` with `scene_count` per source and `assets` with the provider manifest.
+* Consumers that train a model must do their own resampling, reprojection, and band selection. The scaffold in `create_geocroissant_scaffold` shows how to wire `FileSet` and `Field` entries if you need a custom layout.
+
+## Validation contract
+
+Every generated document is validated inline by `mlcroissant`. The tools return `valid`, `errors`, and `warnings` in the same payload as `json_ld`. Consumers should check `valid` before they feed a dataset to a trainer. Validation covers JSON syntax, JSON-LD expansion, and GeoCroissant properties such as `geocr:spatialResolution` and `geocr:spectralBands`. It does not check that a remote COG is reachable.
+
+## Caching and polling
+
+STAC APIs are public and rate limited by the provider, not by geocr-mcp-server. Consumers should:
+
+* Cache the catalog list from `list_eo_catalogs`. It changes only when the YAML snapshot changes and a new package is released.
+* Cache collection metadata from `get_eo_dataset_details` for the session. It is stable for days.
+* Page through `search_eo_datasets` with `limit` up to 500 and `offset` rather than repeated broad queries.
+* Call `count_eo_scenes` before `search_eo_scenes` to avoid fetching large page results when no scenes match.
+
+There is no `nextCursor` concept in this registry. Pagination uses `limit` and `offset` as defined in `src/geocr_mcp_server/tools.py:71`.
+
+## Acting as a subregistry
+
+A subregistry in the public MCP world mirrors the registry API and adds ratings or security data. In the GeoCroissant world, a subregistry would be a service that mirrors generated GeoCroissant documents and adds curation, for example cloud optimized footprints or trained model cards. If you build one, preserve the original `conformsTo`, `providers`, and `distribution` URIs, and add your metadata under a namespaced `_meta` key. Keep the bbox in `[min_lon, min_lat, max_lon, max_lat]` and the CRS string intact so that `mlcroissant` can still read the document.
+
+## What consumers should not expect
+
+* No uptime or data durability guarantee from the registry itself. The registry is a YAML file plus live STAC queries. Providers own durability.
+* No server side rendering of rasters. The registry builds metadata that points at assets. Consumers fetch bytes directly from the provider.
+* No OAuth for catalog access. Catalogs are public. Asset auth is per scheme and handled by the consumer.

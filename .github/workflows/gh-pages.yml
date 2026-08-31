@@ -25,28 +25,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install docs deps
-        run: |
-          if [ -f docs/package.json ]; then cd docs && npm ci || npm install; fi
-          if [ -f package.json ]; then npm ci || npm install; fi
       - name: Validate Mintlify docs
         run: npx --yes mint validate
         working-directory: docs
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+  # Deploy to Pages is disabled until Pages is enabled in Settings.
+  # To enable: Settings → Pages → Build and deployment → Source: GitHub Actions.
+  # Then uncomment the two jobs below and remove this validate-only job.
+  #  - name: Setup Pages
+  #    uses: actions/configure-pages@v5
+  #  - name: Upload artifact
+  #    uses: actions/upload-pages-artifact@v3
+  #    with:
+  #      path: docs
+  # deploy:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deployment.outputs.page_url }}
+  #   steps:
+  #     - id: deployment
+  #       uses: actions/deploy-pages@v4
